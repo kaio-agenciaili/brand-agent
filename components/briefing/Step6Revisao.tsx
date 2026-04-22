@@ -98,8 +98,23 @@ export function Step6Revisao({ dados, idProjeto }: Props) {
             v={step5.tiposNome.join(", ") || "—"}
           />
           <Campo l="Comprimento" v={step5.comprimento} />
-          <Campo l="Evitar" v={step5.palavrasEvitar} multiline />
+          <Campo
+            l="Nomes a negativar"
+            v={step5.nomesNegativar || "—"}
+            multiline
+          />
+          <Campo
+            l="Sinónimos / termos de que gosta"
+            v={step5.sinonimosGosto || "—"}
+            multiline
+          />
+          <Campo l="Evitar (raízes)" v={step5.palavrasEvitar} multiline />
           <Campo l="Inspirações" v={step5.nomesInspiram} multiline />
+          <Campo
+            l="Outras notas"
+            v={step5.outrasNotasNaming || "—"}
+            multiline
+          />
           <p className="text-sm text-ili-cinza-500">
             <span className="font-medium text-ili-cinza-500">Extensões: </span>
             {step5.extensoes.map((x) => `.${x}`).join(", ") || "—"}

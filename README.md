@@ -40,7 +40,7 @@ python -m venv .venv
 pip install -r requirements.txt
 cp .env.example .env
 # Preencha .env
-uvicorn main:app --reload --port 8000
+uvicorn server:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Ajuste `main:app` e a porta se o ponto de entrada do projeto for outro. O frontend deve apontar `CREWAI_SERVER_URL` para este URL.
@@ -70,6 +70,6 @@ Copie a partir de `.env.local.example` e `python/.env.example` e nunca comite fi
 ## Como correr tudo
 
 1. Terminal 1 (Next.js): `npm run dev`  
-2. Terminal 2 (API Python): `uvicorn main:app --reload --port 8000` (ou o comando documentado no `python/README` do repositório, quando existir)
+2. Terminal 2 (API Python): `uvicorn server:app --reload --host 127.0.0.1 --port 8000` (ou o comando documentado no `python/README` do repositório, quando existir)
 
 Garanta que `CREWAI_SERVER_URL` no Next corresponde ao URL onde o Uvicorn está a escutar.

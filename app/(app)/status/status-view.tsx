@@ -1,0 +1,203 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import type { SystemStatusSnapshot } from "@/lib/system/status-snapshot";
+
+function Indicador({
+  titulo,
+  sub,
+  ok,
+  extra,
+}: {
+  titulo: string;
+  sub: string;
+  ok: boolean;
+  extra?: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        ok
+          ? "border-emerald-200 bg-emerald-50/80"
+          : "border-amber-200 bg-amber-50/80"
+      }`}
+    >
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-ili-preto">{titulo}</h2>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+            ok ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"
+          }`}
+        >
+          {ok ? "OK" : "Atenção"}
+        </span>
+      </div>
+      <p className="text-sm text-ili-cinza-600">{sub}</p>
+      {extra && (
+        <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-white/60 p-2 text-xs text-ili-cinza-500">
+          {extra}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+type Props = {
+  initialData: SystemStatusSnapshot | null;
+  initialError: string | null;
+};
+
+export function StatusView({ initialData, initialError }: Props) {
+  const [data, setData] = useState<SystemStatusSnapshot | null>(initialData);
+  const [erro, setErro] = useState<string | null>(initialError);
+  const [aCarregar, setACarregar] = useState(false);
+
+  const recarregar = useCallback(async () => {
+    setACarregar(true);
+    setErro(null);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const r = await fetch("/api/status", {
+        cache: "no-store",
+        signal: ctrl.signal,
+      });
+      let j: SystemStatusSnapshot;
+      try {
+        j = (await r.json()) as SystemStatusSnapshot;
+      } catch {
+        setErro(
+          r.ok
+            ? "Resposta inválida (não é JSON). Tenta recarregar a página."
+            : `Erro ${r.status}: resposta inesperada do servidor.`,
+        );
+        return;
+      }
+      if (!r.ok) {
+        setErro(`HTTP ${r.status}`);
+        return;
+      }
+      setData(j);
+    } catch (e) {
+      const aborted =
+        (typeof DOMException !== "undefined" &&
+          e instanceof DOMException &&
+          e.name === "AbortError") ||
+        (e instanceof Error && e.name === "AbortError");
+      if (aborted) {
+        setErro(
+          "A verificação demorou demasiado (timeout 30s). O servidor Next ou o Supabase podem estar bloqueados — verifica a consola/terminal e a rede.",
+        );
+      } else {
+        setErro(String(e));
+      }
+    } finally {
+      clearTimeout(t);
+      setACarregar(false);
+    }
+  }, []);
+
+  const supaOk = Boolean(
+    data?.supabase?.envConfigured && data?.supabase?.session === "autenticado",
+  );
+  const pyOk = data?.python?.reachable === true;
+  const geralOk = data?.ok === true;
+
+  return (
+    <div className="min-w-0 max-w-2xl">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-ili-preto">Estado do sistema</h1>
+          <p className="mt-1 text-sm text-ili-cinza-500">
+            Supabase, sessão e API Python (Crew) — sem expor chaves.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={recarregar}
+          disabled={aCarregar}
+          className="rounded-lg border border-ili-cinza-200 bg-white px-3 py-2 text-sm font-medium text-ili-preto hover:border-brand-300 disabled:opacity-50"
+        >
+          {aCarregar ? "A verificar…" : "Atualizar"}
+        </button>
+      </div>
+
+      {erro && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {erro}
+        </p>
+      )}
+
+      {aCarregar && !data && !erro && (
+        <p className="text-sm text-ili-cinza-500">A carregar status…</p>
+      )}
+
+      {data && (
+        <>
+          <div
+            className={`mb-4 rounded-2xl border p-4 ${
+              geralOk
+                ? "border-emerald-300 bg-emerald-50/90"
+                : "border-amber-300 bg-amber-50/90"
+            }`}
+          >
+            <p className="text-sm font-medium text-ili-preto">
+              {geralOk
+                ? "Tudo operacional para o fluxo (Supabase + sessão + API Python)."
+                : "Algum componente precisa de atenção. Vê as caixas abaixo e as dicas."}
+            </p>
+            <p className="mt-1 text-xs text-ili-cinza-500">
+              Última verificação: {data.timestamp}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Indicador
+              titulo="Supabase + sessão"
+              sub={
+                !data.supabase.envConfigured
+                  ? "Variáveis públicas do Supabase em falta no .env.local."
+                  : data.supabase.session === "autenticado"
+                    ? "Sessão activa: leitura/escrita com o teu utilizador."
+                    : `Estado: ${data.supabase.session}${
+                        data.supabase.message
+                          ? ` — ${data.supabase.message}`
+                          : ""
+                      }`
+              }
+              ok={supaOk}
+              extra={
+                !supaOk && !data.supabase.message
+                  ? "Inicia sessão para marcar verde, ou preenche NEXT_PUBLIC_SUPABASE_* na raiz do projecto."
+                  : data.supabase.message
+              }
+            />
+            <Indicador
+              titulo="API Python (Crew / FastAPI)"
+              sub={
+                pyOk
+                  ? `A responder em ${data.python.url} (GET / → ok).`
+                  : `A tentar ${data.python.url}. ${
+                      data.python.detail || "Não alcançável."
+                    }`
+              }
+              ok={pyOk}
+              extra={
+                !pyOk
+                  ? `Liga: cd python && .\\.venv\\Scripts\\python.exe -m uvicorn server:app --reload --port 8000\n` +
+                    `No .env.local (Next) define CREWAI_SERVER_URL=${data.dicas.envCrew ? "…" : data.dicas.fallbackUrl} (já usamos fallback se vazio).`
+                  : `HTTP ${data.python.statusCode ?? "—"}`
+              }
+            />
+          </div>
+        </>
+      )}
+
+      {!data && erro && !aCarregar && (
+        <p className="text-sm text-ili-cinza-600">
+          Usa &quot;Atualizar&quot; para tentar de novo, ou recarrega a página (F5).
+        </p>
+      )}
+    </div>
+  );
+}

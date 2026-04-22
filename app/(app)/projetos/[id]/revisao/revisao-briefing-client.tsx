@@ -5,141 +5,231 @@ import { Step2Publico } from "@/components/briefing/Step2Publico";
 import { Step3Posicionamento } from "@/components/briefing/Step3Posicionamento";
 import { Step4Personalidade } from "@/components/briefing/Step4Personalidade";
 import { Step5Diretrizes } from "@/components/briefing/Step5Diretrizes";
+import { type EventoSSE } from "@/components/briefing/AgentesProcessando";
+import { AgentesLive } from "@/components/briefing/AgentesLive";
+import { FluxoNamingStepper } from "@/components/projetos/fluxo-naming-stepper";
 import { useBriefingProjeto } from "@/components/projetos/briefing-projeto-context";
 import type { BriefingStep3, BriefingState } from "@/lib/briefing/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-type Props = { idProjeto: string };
+type Props = {
+  idProjeto: string;
+  initialBriefing: BriefingState;
+  initialTexto: string;
+};
 
-function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Secao({ titulo, id: idSecao, children }: { titulo: string; id?: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-ili-cinza-200 bg-white/90 p-4 shadow-sm">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-brand-800">
-        {titulo}
-      </h3>
+    <section
+      id={idSecao}
+      className="rounded-2xl border border-ili-cinza-200 bg-white/90 p-4 shadow-sm scroll-mt-6"
+    >
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-brand-800">{titulo}</h3>
       {children}
     </section>
   );
 }
 
-export function RevisaoBriefingClient({ idProjeto }: Props) {
+function concorrentesParaApi(b: BriefingState): string[] {
+  return b.step3.concorrentesManual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+}
+
+export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto }: Props) {
   const router = useRouter();
-  const { briefing, setBriefing, textoOriginal } = useBriefingProjeto();
+  const { briefing, setBriefing, textoOriginal, setTextoOriginal } = useBriefingProjeto();
+  const [processando, setProcessando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [eventosSSE, setEventosSSE] = useState<EventoSSE[]>([]);
+  const esRef = useRef<EventSource | null>(null);
 
-  useEffect(() => {
-    if (!briefing) {
-      router.replace(`/projetos/${idProjeto}`);
-    }
-  }, [briefing, idProjeto, router]);
+  useLayoutEffect(() => {
+    setBriefing(initialBriefing);
+    setTextoOriginal(initialTexto);
+  }, [initialBriefing, initialTexto, setBriefing, setTextoOriginal]);
 
-  if (!briefing) {
-    return (
-      <div className="py-12 text-center text-sm text-ili-cinza-400">
-        A carregar…
-      </div>
-    );
+  const b = briefing ?? initialBriefing;
+
+  function setState(updater: (s: BriefingState) => BriefingState) {
+    setBriefing((prev) => updater(prev ?? initialBriefing));
   }
 
-  function setState(updater: (b: BriefingState) => BriefingState) {
-    setBriefing((prev) => (prev ? updater(prev) : prev));
-  }
-
-  function patchStep3(
-    patch:
-      | Partial<BriefingStep3>
-      | ((prev: BriefingStep3) => BriefingStep3),
-  ) {
-    setState((b) => {
-      const step3 =
-        typeof patch === "function" ? patch(b.step3) : { ...b.step3, ...patch };
-      return { ...b, step3 };
+  function patchStep3(patch: Partial<BriefingStep3> | ((prev: BriefingStep3) => BriefingStep3)) {
+    setState((s) => {
+      const step3 = typeof patch === "function" ? patch(s.step3) : { ...s.step3, ...patch };
+      return { ...s, step3 };
     });
+  }
+
+  function encerrarSSE() {
+    esRef.current?.close();
+    esRef.current = null;
+  }
+
+  async function confirmar() {
+    setErro(null);
+    setEventosSSE([]);
+    setProcessando(true);
+    encerrarSSE();
+
+    try {
+      // 1. Iniciar job no Python via Next.js
+      const startRes = await fetch("/api/naming/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projeto_id: idProjeto,
+          briefing: b,
+          briefing_texto: textoOriginal || initialTexto,
+          concorrentes_manuais: concorrentesParaApi(b),
+        }),
+      });
+      const startData = (await startRes.json()) as { sucesso?: boolean; job_id?: string; erro?: string };
+
+      if (!startRes.ok || !startData.sucesso || !startData.job_id) {
+        setErro(startData.erro || "Erro ao iniciar geração.");
+        setProcessando(false);
+        return;
+      }
+
+      const jobId = startData.job_id;
+
+      // 2. Conectar ao stream SSE
+      const streamUrl = `/api/naming/stream?job_id=${encodeURIComponent(jobId)}&projeto_id=${encodeURIComponent(idProjeto)}`;
+      const es = new EventSource(streamUrl);
+      esRef.current = es;
+
+      es.onmessage = (e) => {
+        let event: EventoSSE;
+        try {
+          event = JSON.parse(e.data as string) as EventoSSE;
+        } catch {
+          return;
+        }
+
+        setEventosSSE((prev) => [...prev, event]);
+
+        if (event.type === "done") {
+          encerrarSSE();
+          setProcessando(false);
+          router.push(`/projetos/${idProjeto}/resultado`);
+          router.refresh();
+        }
+
+        if (event.type === "error") {
+          encerrarSSE();
+          setProcessando(false);
+          setErro("Erro durante a geração. Tente novamente.");
+        }
+
+        if (event.type === "stream_end" || event.type === "timeout") {
+          encerrarSSE();
+          setProcessando(false);
+        }
+      };
+
+      es.onerror = () => {
+        encerrarSSE();
+        setProcessando(false);
+        setErro("Conexão com o servidor perdida. Verifique se o servidor Python está a correr.");
+      };
+    } catch (e) {
+      setErro(String(e));
+      setProcessando(false);
+    }
   }
 
   return (
     <div className="min-w-0 max-w-7xl pb-8">
-      <h1 className="mb-6 text-2xl font-semibold text-ili-preto">
-        Revisão do briefing
-      </h1>
+      <FluxoNamingStepper idProjeto={idProjeto} etapaAtual={3} />
+
+      <AgentesLive eventos={eventosSSE} visivel={processando} />
+
+      {erro && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+          {erro}
+        </p>
+      )}
+      <h1 className="mb-2 text-2xl font-semibold text-ili-preto">Revisão completa</h1>
+      <p className="mb-6 text-sm text-ili-cinza-500">
+        Pode alterar qualquer secção abaixo e voltar a carregar em{" "}
+        <strong className="font-medium text-ili-cinza-600">Confirmar e gerar nomes</strong>{" "}
+        para obter novas propostas (os resultados anteriores serão substituídos quando a nova geração terminar).
+      </p>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_3fr] lg:items-start">
         <div className="order-2 lg:order-1">
-          <p className="mb-2 text-xs font-medium uppercase text-ili-cinza-400">
-            Texto original
-          </p>
+          <p className="mb-2 text-xs font-medium uppercase text-ili-cinza-400">Texto original</p>
           <div className="rounded-2xl border border-ili-cinza-200 bg-ili-cinza-50/40 p-4">
             <pre className="max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-ili-cinza-500">
-              {textoOriginal || "—"}
+              {textoOriginal || initialTexto || "—"}
             </pre>
           </div>
         </div>
         <div className="order-1 space-y-4 lg:order-2">
           <p className="text-sm text-ili-cinza-500">
-            Os agentes interpretaram seu briefing. Revise e ajuste se
-            necessário.
+            Os concorrentes do benchmark aparecem em resumo abaixo; o foco aqui é território, tom e regras de naming.
           </p>
           <Secao titulo="Empresa">
             <Step1Empresa
               modoRevisao
-              value={briefing.step1}
-              onChange={(p) =>
-                setState((b) => ({ ...b, step1: { ...b.step1, ...p } }))
-              }
+              value={b.step1}
+              onChange={(p) => setState((s) => ({ ...s, step1: { ...s.step1, ...p } }))}
             />
           </Secao>
           <Secao titulo="Público">
             <Step2Publico
-              value={briefing.step2}
-              onChange={(p) =>
-                setState((b) => ({ ...b, step2: { ...b.step2, ...p } }))
-              }
+              value={b.step2}
+              onChange={(p) => setState((s) => ({ ...s, step2: { ...s.step2, ...p } }))}
             />
           </Secao>
           <Secao titulo="Posicionamento">
-            <Step3Posicionamento
-              value={briefing.step3}
-              onChange={patchStep3}
-            />
+            <Step3Posicionamento omitirConcorrentes value={b.step3} onChange={patchStep3} />
           </Secao>
           <Secao titulo="Personalidade">
             <Step4Personalidade
               compacto
-              value={briefing.step4}
-              onChange={(p) =>
-                setState((b) => ({ ...b, step4: { ...b.step4, ...p } }))
-              }
+              value={b.step4}
+              onChange={(p) => setState((s) => ({ ...s, step4: { ...s.step4, ...p } }))}
             />
           </Secao>
-          <Secao titulo="Diretrizes">
+          <Secao titulo="Diretrizes de naming" id="diretrizes-naming">
             <Step5Diretrizes
-              value={briefing.step5}
-              onChange={(p) =>
-                setState((b) => ({ ...b, step5: { ...b.step5, ...p } }))
-              }
+              value={b.step5}
+              onChange={(p) => setState((s) => ({ ...s, step5: { ...s.step5, ...p } }))}
             />
           </Secao>
           <div className="space-y-3 pt-2">
             <button
               type="button"
-              onClick={() =>
-                router.push(`/projetos/${idProjeto}/resultado`)
-              }
-              className="w-full rounded-2xl bg-brand-600 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-700"
+              onClick={confirmar}
+              disabled={processando}
+              className="w-full rounded-2xl bg-brand-600 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-700 disabled:opacity-50"
             >
-              Confirmar e gerar nomes →
+              {processando ? "Agentes a gerar nomes…" : "Confirmar e gerar nomes →"}
             </button>
-            <p className="text-center">
+            <p className="text-center text-sm text-ili-cinza-400">
               <Link
-                href={`/projetos/${idProjeto}`}
-                className="text-sm text-ili-cinza-400 underline-offset-2 hover:text-brand-600 hover:underline"
+                href={`/projetos/${idProjeto}/benchmark?editar=benchmark`}
+                className="underline-offset-2 hover:text-brand-600 hover:underline"
               >
-                Voltar e editar o texto original
+                Rever benchmark
+              </Link>
+              <span className="mx-2 text-ili-cinza-300">·</span>
+              <Link
+                href={`/projetos/${idProjeto}?editar=input`}
+                className="underline-offset-2 hover:text-brand-600 hover:underline"
+              >
+                Input inicial
               </Link>
             </p>
           </div>
         </div>
       </div>
+      {/* Overlay minimalista apenas para bloquear cliques durante processamento */}
+      {processando && (
+        <div className="fixed inset-0 z-10 cursor-not-allowed" aria-hidden />
+      )}
     </div>
   );
 }

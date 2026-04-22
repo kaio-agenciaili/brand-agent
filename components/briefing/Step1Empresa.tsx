@@ -66,8 +66,12 @@ export function Step1Empresa({ value, onChange, modoRevisao }: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-1">
           <label className="mb-1 block text-sm font-medium text-ili-cinza-500">
-            Nome da empresa
+            Nome da empresa ou marca
           </label>
+          <p className="mb-1 text-xs text-ili-cinza-400">
+            A IA deve sugerir um nome provisório se ainda não existir marca
+            definida — edite à vontade.
+          </p>
           <input
             type="text"
             value={value.nomeEmpresa}
@@ -101,6 +105,10 @@ export function Step1Empresa({ value, onChange, modoRevisao }: Props) {
           <label className="mb-1 block text-sm font-medium text-ili-cinza-500">
             Propósito / missão
           </label>
+          <p className="mb-1 text-xs text-ili-cinza-400">
+            Gerado ou completado pela IA a partir do contexto; valide com o
+            cliente.
+          </p>
           <textarea
             value={value.proposito}
             onChange={(e) => onChange({ proposito: e.target.value })}

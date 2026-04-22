@@ -11,6 +11,8 @@ type Props = {
       | Partial<BriefingStep3>
       | ((prev: BriefingStep3) => BriefingStep3),
   ) => void;
+  /** Quando true, não permite editar concorrentes (fluxo: benchmark já aprovado). */
+  omitirConcorrentes?: boolean;
 };
 
 const mockConcorrentes: ConcorrenteMock[] = [
@@ -37,7 +39,11 @@ function toggleIn<T>(list: T[], item: T): T[] {
     : [...list, item];
 }
 
-export function Step3Posicionamento({ value, onChange }: Props) {
+export function Step3Posicionamento({
+  value,
+  onChange,
+  omitirConcorrentes = false,
+}: Props) {
   const [carregarIa, setCarregarIa] = useState(false);
 
   function pesquisarConcorrentes() {
@@ -71,39 +77,71 @@ export function Step3Posicionamento({ value, onChange }: Props) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <label className="mb-2 block text-sm font-medium text-ili-cinza-500">
-          Concorrentes (um por linha)
-        </label>
-        <textarea
-          value={value.concorrentesManual}
-          onChange={(e) => onChange({ concorrentesManual: e.target.value })}
-          rows={5}
-          className="w-full rounded-xl border border-ili-cinza-200 px-3 py-2 font-mono text-sm text-ili-preto focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200"
-          placeholder="ex.: concorrente.com"
-        />
-        <button
-          type="button"
-          onClick={pesquisarConcorrentes}
-          disabled={carregarIa}
-          className="mt-3 rounded-lg border border-ili-cinza-200 bg-white px-4 py-2 text-sm font-medium text-ili-cinza-500 shadow-sm hover:border-brand-300 hover:text-brand-800 disabled:cursor-wait"
-        >
-          {carregarIa ? "A pesquisar…" : "Pesquisar concorrentes com IA"}
-        </button>
-        {value.concorrentesIa.length > 0 && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            {value.concorrentesIa.map((c) => (
-              <div
-                key={c.id}
-                className="rounded-xl border border-ili-cinza-200 bg-white p-3 shadow-sm"
-              >
-                <p className="font-semibold text-ili-preto">{c.nome}</p>
-                <p className="mt-1 text-sm text-ili-cinza-500">{c.resumo}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {omitirConcorrentes ? (
+        <div>
+          <h3 className="mb-2 text-sm font-medium text-ili-cinza-500">
+            Concorrentes (benchmark aprovado)
+          </h3>
+          {value.concorrentesIa.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {value.concorrentesIa.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/50 p-3 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-ili-preto">{c.nome}</p>
+                    {c.tipo ? (
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-800 ring-1 ring-ili-cinza-200">
+                        {c.tipo === "direto" ? "Direto" : "Indireto"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm text-ili-cinza-500">{c.resumo}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <pre className="whitespace-pre-wrap rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/50 p-3 font-sans text-sm text-ili-cinza-600">
+              {value.concorrentesManual.trim() || "—"}
+            </pre>
+          )}
+        </div>
+      ) : (
+        <div>
+          <label className="mb-2 block text-sm font-medium text-ili-cinza-500">
+            Concorrentes (um por linha)
+          </label>
+          <textarea
+            value={value.concorrentesManual}
+            onChange={(e) => onChange({ concorrentesManual: e.target.value })}
+            rows={5}
+            className="w-full rounded-xl border border-ili-cinza-200 px-3 py-2 font-mono text-sm text-ili-preto focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            placeholder="ex.: concorrente.com"
+          />
+          <button
+            type="button"
+            onClick={pesquisarConcorrentes}
+            disabled={carregarIa}
+            className="mt-3 rounded-lg border border-ili-cinza-200 bg-white px-4 py-2 text-sm font-medium text-ili-cinza-500 shadow-sm hover:border-brand-300 hover:text-brand-800 disabled:cursor-wait"
+          >
+            {carregarIa ? "A pesquisar…" : "Pesquisar concorrentes com IA"}
+          </button>
+          {value.concorrentesIa.length > 0 && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {value.concorrentesIa.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-xl border border-ili-cinza-200 bg-white p-3 shadow-sm"
+                >
+                  <p className="font-semibold text-ili-preto">{c.nome}</p>
+                  <p className="mt-1 text-sm text-ili-cinza-500">{c.resumo}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div>
         <h3 className="mb-3 text-sm font-medium text-ili-cinza-500">
           Territórios emocionais (múltipla escolha)

@@ -17,6 +17,10 @@ const idiomas: { v: IdiomaNome; l: string }[] = [
 export function Step2Publico({ value, onChange }: Props) {
   return (
     <div className="space-y-6">
+      <p className="text-xs text-ili-cinza-400">
+        A extração do briefing preenche estes blocos com inferência profissional
+        quando o texto for vago — ajuste conforme o conhecimento do cliente.
+      </p>
       <div>
         <label className="mb-1 block text-sm font-medium text-ili-cinza-500">
           Perfil demográfico

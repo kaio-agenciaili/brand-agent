@@ -1,11 +1,14 @@
 "use client";
 
+import { PilulasGrupo } from "@/components/briefing/PilulasGrupo";
 import type {
   BriefingStep5,
   ComprimentoPreferido,
   ExtensaoDominio,
+  PilulasDiretriz,
   TipoNomePreferido,
 } from "@/lib/briefing/types";
+import { pilulasDiretrizVazias } from "@/lib/briefing/types";
 
 type Props = {
   value: BriefingStep5;
@@ -37,9 +40,30 @@ function toggleArray<T>(list: T[], v: T): T[] {
   return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 }
 
+function pilulas(
+  v: BriefingStep5,
+  key: keyof Pick<
+    BriefingStep5,
+    | "pilulasSinonimos"
+    | "pilulasEvitar"
+    | "pilulasInspiram"
+    | "pilulasNegativar"
+    | "pilulasOutras"
+  >,
+): PilulasDiretriz {
+  return v[key] ?? pilulasDiretrizVazias();
+}
+
 export function Step5Diretrizes({ value, onChange }: Props) {
+  const soComBr =
+    value.extensoes.length === 1 && value.extensoes[0] === "com.br";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <p className="text-xs text-ili-cinza-400">
+        A IA pré-preenche sugestões na extração do briefing. Clique nas pílulas
+        que quer incluir e complete com texto livre se precisar.
+      </p>
       <div>
         <p className="mb-2 text-sm font-medium text-ili-cinza-500">
           Tipo de nome preferido (múltipla escolha)
@@ -86,28 +110,57 @@ export function Step5Diretrizes({ value, onChange }: Props) {
           ))}
         </div>
       </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-ili-cinza-500">
-          Palavras / raízes a evitar
-        </label>
-        <textarea
-          value={value.palavrasEvitar}
-          onChange={(e) => onChange({ palavrasEvitar: e.target.value })}
-          rows={3}
-          className="w-full rounded-xl border border-ili-cinza-200 px-3 py-2 text-ili-preto focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200"
-        />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-ili-cinza-500">
-          Nomes que inspiram
-        </label>
-        <textarea
-          value={value.nomesInspiram}
-          onChange={(e) => onChange({ nomesInspiram: e.target.value })}
-          rows={3}
-          className="w-full rounded-xl border border-ili-cinza-200 px-3 py-2 text-ili-preto focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200"
-        />
-      </div>
+
+      <PilulasGrupo
+        titulo="Nomes a negativar"
+        ajuda="Pílulas sugeridas pela IA; clique para incluir. Texto livre para mais detalhe."
+        pilulas={pilulas(value, "pilulasNegativar")}
+        onPilulas={(next) => onChange({ pilulasNegativar: next })}
+        textoLivre={value.nomesNegativar}
+        onTextoLivre={(v) => onChange({ nomesNegativar: v })}
+        placeholderLivre="Notas adicionais (opcional)…"
+      />
+
+      <PilulasGrupo
+        titulo="Sinónimos ou termos de que gosta"
+        ajuda="Ideias semânticas para o naming — seleccione as que fazem sentido."
+        pilulas={pilulas(value, "pilulasSinonimos")}
+        onPilulas={(next) => onChange({ pilulasSinonimos: next })}
+        textoLivre={value.sinonimosGosto}
+        onTextoLivre={(v) => onChange({ sinonimosGosto: v })}
+        placeholderLivre="Outros termos à mão (opcional)…"
+      />
+
+      <PilulasGrupo
+        titulo="Palavras, sílabas ou raízes a evitar"
+        ajuda="Clichés ou sons que quer afastar."
+        pilulas={pilulas(value, "pilulasEvitar")}
+        onPilulas={(next) => onChange({ pilulasEvitar: next })}
+        textoLivre={value.palavrasEvitar}
+        onTextoLivre={(v) => onChange({ palavrasEvitar: v })}
+        placeholderLivre="Ex.: mais raízes a evitar…"
+      />
+
+      <PilulasGrupo
+        titulo="Marcas ou nomes de referência que inspiram"
+        ajuda="Referência de tom ou estrutura — não para copiar."
+        pilulas={pilulas(value, "pilulasInspiram")}
+        onPilulas={(next) => onChange({ pilulasInspiram: next })}
+        textoLivre={value.nomesInspiram}
+        onTextoLivre={(v) => onChange({ nomesInspiram: v })}
+        placeholderLivre="Outras referências (opcional)…"
+      />
+
+      <PilulasGrupo
+        titulo="Outras notas para o naming"
+        ajuda="Restrições ou preferências adicionais sugeridas pela IA."
+        pilulas={pilulas(value, "pilulasOutras")}
+        onPilulas={(next) => onChange({ pilulasOutras: next })}
+        textoLivre={value.outrasNotasNaming}
+        onTextoLivre={(v) => onChange({ outrasNotasNaming: v })}
+        placeholderLivre="Notas extra (opcional)…"
+      />
+
       <div>
         <p className="mb-2 text-sm font-medium text-ili-cinza-500">
           Extensões de domínio (múltipla escolha)
@@ -133,6 +186,30 @@ export function Step5Diretrizes({ value, onChange }: Props) {
             );
           })}
         </div>
+        {soComBr ? (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-900">
+            <span className="font-medium">Só .com.br?</span> Se tiver interesse
+            em <strong>.com</strong>, <strong>.io</strong> ou <strong>.app</strong>{" "}
+            para defesa de marca ou expansão, seleccione acima ou diga ao cliente
+            para validar disponibilidade nesses TLDs.
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(["com", "io", "app"] as const).map((x) => (
+                <button
+                  key={x}
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      extensoes: toggleArray(value.extensoes, x),
+                    })
+                  }
+                  className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  + .{x}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

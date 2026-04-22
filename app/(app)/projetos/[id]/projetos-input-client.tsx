@@ -1,86 +1,144 @@
 "use client";
 
 import { AgentesProcessando } from "@/components/briefing/AgentesProcessando";
+import { FluxoNamingStepper } from "@/components/projetos/fluxo-naming-stepper";
 import { useBriefingProjeto } from "@/components/projetos/briefing-projeto-context";
-import { syntheticBriefingFromInput } from "@/lib/briefing/synthetic-briefing";
-import { projetosMock } from "@/lib/mock/data";
+import type { BriefingState } from "@/lib/briefing/types";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-type Props = { idProjeto: string };
+type Props = {
+  idProjeto: string;
+  nomeProjeto: string;
+  nomeCliente: string;
+  /** Texto gravo na base (rascunho) ao reabrir o projecto */
+  textoRascunhoInicial?: string;
+};
 
-export function ProjetosInputClient({ idProjeto }: Props) {
+export function ProjetosInputClient({
+  idProjeto,
+  nomeProjeto,
+  nomeCliente,
+  textoRascunhoInicial = "",
+}: Props) {
   const router = useRouter();
-  const {
-    textoOriginal,
-    setTextoOriginal,
-    concorrentesOpcionais,
-    setConcorrentesOpcionais,
-    setBriefing,
-  } = useBriefingProjeto();
+  const { textoOriginal, setTextoOriginal, setBriefing } =
+    useBriefingProjeto();
 
+  const [desafio, setDesafio] = useState("");
   const [processando, setProcessando] = useState(false);
-  const [corridaAgentes, setCorridaAgentes] = useState(0);
-  const concluiu = useRef(false);
-  const project = projetosMock.find((p) => p.id === idProjeto);
+  const [erro, setErro] = useState<string | null>(null);
 
-  const onAgentesFim = useCallback(() => {
-    if (concluiu.current) {
+  useEffect(() => {
+    if (textoRascunhoInicial) {
+      setTextoOriginal(textoRascunhoInicial);
+    }
+  }, [textoRascunhoInicial, setTextoOriginal]);
+
+  async function analisar() {
+    if (!textoOriginal.trim() && !desafio.trim()) {
+      setErro("Descreva o desafio ou cole material de contexto antes de continuar.");
       return;
     }
-    concluiu.current = true;
-    const b = syntheticBriefingFromInput(textoOriginal, concorrentesOpcionais);
-    b.step1 = { ...b.step1, textoReuniao: textoOriginal };
-    setBriefing(b);
-    setProcessando(false);
-    router.push(`/projetos/${idProjeto}/revisao`);
-  }, [concorrentesOpcionais, idProjeto, router, setBriefing, textoOriginal]);
-
-  function analisar() {
-    concluiu.current = false;
-    setCorridaAgentes((k) => k + 1);
+    const blocoDesafio = desafio.trim()
+      ? `## Desafio\n${desafio.trim()}`
+      : "";
+    const blocoContexto = textoOriginal.trim()
+      ? `## Material e referências\n${textoOriginal.trim()}`
+      : "";
+    const briefingParaApi = [blocoDesafio, blocoContexto]
+      .filter(Boolean)
+      .join("\n\n");
+    setErro(null);
     setProcessando(true);
+    try {
+      const res = await fetch("/api/extrair-briefing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projeto_id: idProjeto,
+          briefing_texto: briefingParaApi,
+          concorrentes_manuais: [],
+        }),
+      });
+      const data = (await res.json()) as {
+        sucesso?: boolean;
+        briefing?: unknown;
+        erro?: string;
+      };
+      if (!res.ok || !data.sucesso) {
+        setErro(data.erro || `Erro ${res.status}`);
+        return;
+      }
+      if (data.briefing) {
+        setBriefing(data.briefing as BriefingState);
+      }
+      setTextoOriginal(briefingParaApi);
+      router.push(`/projetos/${idProjeto}/validar-briefing`);
+      router.refresh();
+    } catch (e) {
+      setErro(String(e));
+    } finally {
+      setProcessando(false);
+    }
   }
 
   return (
     <>
+      <FluxoNamingStepper idProjeto={idProjeto} etapaAtual={1} />
+      {erro && (
+        <p
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          role="alert"
+        >
+          {erro}
+        </p>
+      )}
       <div className="mx-auto flex min-h-[min(85vh,880px)] max-w-3xl flex-col px-0">
-        <header className="mb-8 text-center sm:mb-10">
-          <p className="text-xs text-ili-cinza-400">
-            {project?.nome ?? "Projecto"}{" "}
-            {project && (
-              <span className="text-ili-cinza-300">· {project.nomeCliente}</span>
+        <header className="mb-6 text-center sm:mb-8">
+          <h1 className="text-lg font-semibold text-ili-preto sm:text-xl">
+            Input do briefing
+          </h1>
+          <p className="mt-1 text-xs text-ili-cinza-400">
+            {nomeProjeto}
+            {nomeCliente && (
+              <span className="text-ili-cinza-300"> · {nomeCliente}</span>
             )}
           </p>
         </header>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <label className="sr-only" htmlFor="briefing-texto">
-            Contexto do cliente
-          </label>
-          <textarea
-            id="briefing-texto"
-            value={textoOriginal}
-            onChange={(e) => setTextoOriginal(e.target.value)}
-            rows={12}
-            className="min-h-[200px] w-full flex-1 resize-y rounded-2xl border border-ili-cinza-200/90 bg-white px-5 py-4 text-base leading-relaxed text-ili-preto shadow-sm ring-0 placeholder:text-ili-cinza-300 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200/80 sm:min-h-[320px] sm:text-[17px]"
-            placeholder={
-              "Cole aqui o texto da reunião, e-mail de briefing ou qualquer anotação sobre o cliente. Quanto mais contexto, melhores os nomes."
-            }
-          />
-          <div className="mt-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <div>
             <label
-              htmlFor="concorrentes-opc"
-              className="mb-1.5 block text-xs font-medium text-ili-cinza-400"
+              htmlFor="briefing-desafio"
+              className="mb-1.5 block text-left text-xs font-medium text-ili-cinza-500"
             >
-              Concorrentes que você já conhece (opcional, um por linha)
+              Qual é o desafio?
             </label>
             <textarea
-              id="concorrentes-opc"
-              value={concorrentesOpcionais}
-              onChange={(e) => setConcorrentesOpcionais(e.target.value)}
+              id="briefing-desafio"
+              value={desafio}
+              onChange={(e) => setDesafio(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/50 px-3 py-2 text-sm text-ili-preto placeholder:text-ili-cinza-300 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200/80"
-              placeholder="ex.: marca-a.com / Marca B"
+              disabled={processando}
+              className="w-full resize-y rounded-2xl border border-ili-cinza-200/90 bg-white px-4 py-3 text-sm leading-relaxed text-ili-preto shadow-sm placeholder:text-ili-cinza-300 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200/80 disabled:opacity-50"
+              placeholder="Ex.: criar nome para nova linha de produto X, reposicionar após fusão, entrar no mercado Y…"
+            />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <label
+              htmlFor="briefing-texto"
+              className="mb-1.5 block text-left text-xs font-medium text-ili-cinza-500"
+            >
+              Material de apoio (texto, notas de reunião, referências)
+            </label>
+            <textarea
+              id="briefing-texto"
+              value={textoOriginal}
+              onChange={(e) => setTextoOriginal(e.target.value)}
+              rows={12}
+              disabled={processando}
+              className="min-h-[180px] w-full flex-1 resize-y rounded-2xl border border-ili-cinza-200/90 bg-white px-5 py-4 text-base leading-relaxed text-ili-preto shadow-sm ring-0 placeholder:text-ili-cinza-300 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-200/80 sm:min-h-[280px] sm:text-[17px] disabled:opacity-50"
+              placeholder="Cole transcrições, e-mails, links ou notas. Opcional se o desafio acima já for suficiente."
             />
           </div>
         </div>
@@ -91,15 +149,13 @@ export function ProjetosInputClient({ idProjeto }: Props) {
             disabled={processando}
             className="w-full rounded-2xl bg-brand-600 py-4 text-center text-base font-semibold text-white shadow-lg transition hover:bg-brand-700 disabled:opacity-50"
           >
-            Analisar e preparar briefing →
+            {processando
+              ? "A chamar o agente…"
+              : "Gerar briefing estruturado →"}
           </button>
         </div>
       </div>
-      <AgentesProcessando
-        key={corridaAgentes}
-        aberto={processando}
-        onConcluido={onAgentesFim}
-      />
+      <AgentesProcessando aberto={processando} />
     </>
   );
 }

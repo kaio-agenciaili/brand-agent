@@ -72,9 +72,29 @@ export function syntheticBriefingFromInput(
   b.step5 = {
     tiposNome: ["evocativo", "inventado"],
     comprimento: "2-3",
-    palavrasEvitar: "data, solução, global, group",
-    nomesInspiram: "Notion, Linear, Figma",
+    palavrasEvitar: "data, solução",
+    nomesInspiram: "Notion, Linear",
+    nomesNegativar: "",
+    sinonimosGosto: "clareza, ritmo",
+    outrasNotasNaming: "",
     extensoes: ["com", "com.br", "io"],
+    pilulasSinonimos: {
+      sugeridas: ["clareza", "ritmo", "precisão", "confiança", "escala"],
+      selecionadas: ["clareza", "precisão"],
+    },
+    pilulasEvitar: {
+      sugeridas: ["data", "solução", "global", "hub", "labs"],
+      selecionadas: ["global"],
+    },
+    pilulasInspiram: {
+      sugeridas: ["Notion", "Linear", "Figma"],
+      selecionadas: [],
+    },
+    pilulasNegativar: { sugeridas: ["DataPeak", "Genérico SaaS"], selecionadas: [] },
+    pilulasOutras: {
+      sugeridas: ["Pronúncia simples em PT", "Evitar duplo sentido em EN"],
+      selecionadas: [],
+    },
   };
 
   return b;

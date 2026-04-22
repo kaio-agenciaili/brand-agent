@@ -8,6 +8,7 @@ const links = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/projetos", label: "Projetos" },
   { href: "/clientes", label: "Clientes" },
+  { href: "/status", label: "Estado do sistema" },
 ] as const;
 
 export function AppSidebar() {

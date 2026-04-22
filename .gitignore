@@ -52,8 +52,10 @@ ENV/
 
 # Project outputs
 resultado_naming.json
+**/resultado_naming.json
 
 # IDE / editors
+.claude/
 .idea/
 .vscode/*
 !.vscode/extensions.json
