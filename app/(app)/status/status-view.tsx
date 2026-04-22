@@ -102,6 +102,12 @@ export function StatusView({ initialData, initialError }: Props) {
   );
   const pyOk = data?.python?.reachable === true;
   const geralOk = data?.ok === true;
+  const pyDet = data?.python?.detail?.toLowerCase() ?? "";
+  const pyUrl = data?.python?.url ?? "";
+  const pyTimeout =
+    pyDet.includes("timeout") || pyDet.includes("aborted due to timeout");
+  const pyRenderGratis =
+    !pyOk && pyTimeout && pyUrl.includes("onrender.com");
 
   return (
     <div className="min-w-0 max-w-2xl">
@@ -184,11 +190,33 @@ export function StatusView({ initialData, initialError }: Props) {
               ok={pyOk}
               extra={
                 !pyOk
-                  ? `Liga: cd python && .\\.venv\\Scripts\\python.exe -m uvicorn server:app --reload --port 8000\n` +
-                    `No .env.local (Next) define CREWAI_SERVER_URL=${data.dicas.envCrew ? "…" : data.dicas.fallbackUrl} (já usamos fallback se vazio).`
+                  ? pyRenderGratis
+                    ? `Render (plano grátis): a instância “dorme”. O primeiro pedido pode levar 1 minuto — esta página só espera ~10s.\n` +
+                      `1) Abre a URL da API num separador e espera carregar de verdade.\n` +
+                      `2) Volta aqui e clica “Atualizar”.\n` +
+                      `Alternativa: plano pago no Render para o serviço ficar sempre ligado.`
+                    : /localhost|127\.0\.0\.1/.test(pyUrl)
+                      ? `Local: cd python && .\\.venv\\Scripts\\python.exe -m uvicorn server:app --reload --port 8000\n` +
+                        `Na Vercel: define CREWAI_SERVER_URL com o HTTPS do Render (não uses localhost).`
+                      : `Confirma CREWAI_SERVER_URL na Vercel = URL pública HTTPS da API (sem / no fim). Redeploy após mudar.\n` +
+                        `Se for hospedagem grátis com cold start, abre a URL da API no browser, espera, e atualiza esta página.`
                   : `HTTP ${data.python.statusCode ?? "—"}`
               }
             />
+            {pyRenderGratis && (
+              <p className="rounded-xl border border-sky-200 bg-sky-50/90 p-3 text-sm text-sky-950">
+                <span className="font-medium">Dica rápida:</span> abre{" "}
+                <a
+                  href={data.python.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium underline decoration-sky-600/40 underline-offset-2 hover:decoration-sky-800"
+                >
+                  a API no novo separador
+                </a>{" "}
+                e espera sair da página de “carregando”; depois “Atualizar” aqui.
+              </p>
+            )}
           </div>
         </>
       )}

@@ -3,7 +3,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 const GET_USER_MS = 10_000;
-const PYTHON_CHECK_MS = 5_000;
+/** Render grátis e similares demoram a “acordar”; 5s falhava sempre no cold start. Vercel Hobby limita a função a ~10s. */
+const PYTHON_CHECK_MS = 10_000;
 
 function abortAfter(ms: number) {
   return AbortSignal.timeout(ms);
