@@ -1,0 +1,213 @@
+export type TerritorioDef = {
+  id: string;
+  titulo: string;
+  atributos: string[];
+};
+
+/** 16 territórios (ordem e texto conforme o briefing). */
+export const TERRITORIOS: TerritorioDef[] = [
+  {
+    id: "funcional-racional",
+    titulo: "Funcional / Racional",
+    atributos: [
+      "Performance",
+      "Eficiência",
+      "Praticidade",
+      "Segurança",
+      "Precisão",
+      "Controle",
+      "Confiabilidade",
+      "Economia",
+    ],
+  },
+  {
+    id: "emocional-humano",
+    titulo: "Emocional / Humano",
+    atributos: [
+      "Amor/Cuidado",
+      "Pertencimento",
+      "Confiança",
+      "Felicidade",
+      "Liberdade",
+      "Realização pessoal",
+      "Leveza",
+      "Inspiração",
+    ],
+  },
+  {
+    id: "status-poder",
+    titulo: "Status / Poder",
+    atributos: [
+      "Luxo",
+      "Exclusividade",
+      "Prestígio",
+      "Liderança",
+      "Autoridade",
+      "Elite",
+      "Vitória",
+      "Conquista",
+    ],
+  },
+  {
+    id: "inovacao-futuro",
+    titulo: "Inovação / Futuro",
+    atributos: [
+      "Tecnologia",
+      "Futurismo",
+      "Transformação",
+      "Disrupção",
+      "Inteligência",
+      "Automação",
+      "Evolução",
+      "Velocidade",
+    ],
+  },
+  {
+    id: "sustentabilidade-proposito",
+    titulo: "Sustentabilidade / Propósito",
+    atributos: [
+      "Sustentabilidade",
+      "Natureza",
+      "Responsabilidade social",
+      "Ética",
+      "Transparência",
+      "Consumo consciente",
+      "Regeneração",
+    ],
+  },
+  {
+    id: "resultado-performance",
+    titulo: "Resultado / Performance pessoal",
+    atributos: [
+      "Alta performance",
+      "Disciplina",
+      "Foco",
+      "Crescimento",
+      "Superação",
+      "Produtividade",
+      "Resultado",
+      "Consistência",
+    ],
+  },
+  {
+    id: "simplicidade",
+    titulo: "Simplicidade / Minimalismo",
+    atributos: [
+      "Simplicidade",
+      "Clareza",
+      "Essencial",
+      "Fluidez",
+      "Intuitivo",
+      "Descomplicado",
+    ],
+  },
+  {
+    id: "comunidade",
+    titulo: "Comunidade / Coletivo",
+    atributos: [
+      "Comunidade",
+      "Colaboração",
+      "Inclusão",
+      "Diversidade",
+      "União",
+      "Rede",
+      "Cultura compartilhada",
+    ],
+  },
+  {
+    id: "criatividade",
+    titulo: "Criatividade / Expressão",
+    atributos: [
+      "Criatividade",
+      "Expressão",
+      "Arte",
+      "Autenticidade",
+      "Originalidade",
+      "Imaginação",
+    ],
+  },
+  {
+    id: "jornada",
+    titulo: "Jornada / Exploração",
+    atributos: [
+      "Aventura",
+      "Descoberta",
+      "Viagem",
+      "Liberdade",
+      "Experiência",
+      "Caminho",
+      "Evolução",
+    ],
+  },
+  {
+    id: "seguranca",
+    titulo: "Segurança / Estabilidade",
+    atributos: [
+      "Segurança",
+      "Estabilidade",
+      "Tradição",
+      "Solidez",
+      "Garantia",
+      "Proteção",
+    ],
+  },
+  {
+    id: "energia",
+    titulo: "Energia / Ação",
+    atributos: [
+      "Energia",
+      "Velocidade",
+      "Agilidade",
+      "Impacto",
+      "Intensidade",
+      "Movimento",
+    ],
+  },
+  {
+    id: "bem-estar",
+    titulo: "Bem-estar / Equilíbrio",
+    atributos: [
+      "Saúde",
+      "Equilíbrio",
+      "Harmonia",
+      "Tranquilidade",
+      "Autocuidado",
+      "Vitalidade",
+    ],
+  },
+  {
+    id: "conhecimento",
+    titulo: "Conhecimento / Autoridade intelectual",
+    atributos: [
+      "Inteligência",
+      "Conhecimento",
+      "Estratégia",
+      "Método",
+      "Educação",
+      "Especialização",
+    ],
+  },
+  {
+    id: "diversao",
+    titulo: "Diversão / Entretenimento",
+    atributos: [
+      "Diversão",
+      "Humor",
+      "Descontração",
+      "Jogo",
+      "Surpresa",
+      "Experiência lúdica",
+    ],
+  },
+  {
+    id: "tempo-legado",
+    titulo: "Tempo / Legado",
+    atributos: [
+      "Tradição",
+      "Herança",
+      "Legado",
+      "Atemporalidade",
+      "História",
+    ],
+  },
+];

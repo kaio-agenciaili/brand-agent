@@ -1,0 +1,41 @@
+# Naming — convenções e stack
+
+Sistema de criação de nomes de marca (fase actual: autenticação e navegação; sem funcionalidade de agentes ainda).
+
+Se aparecer `Cannot find module './vendor-chunks/...'`: a pasta `.next` está corrompida; executar `npm run dev:clean` (ou `npm run clean` e depois `npm run dev`). Com o projecto no OneDrive, excluir `.next` da sincronização ou mover o repo para um disco local (p.ex. `C:\dev\`) evita o problema.
+
+## Stack
+
+- **Next.js 14** (App Router) + **TypeScript**
+- **Tailwind CSS** (sem bibliotecas de componentes; só utilitários)
+- **Supabase Auth** (e-mail e senha) com **@supabase/ssr** e cookies, quando `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` estão em `.env.local`; **sem** essas chaves, o app abre a UI (middleware não exige login)
+- **Deploy frontend:** Vercel (recomendado)
+- **Planeado (não implementado ainda):** Supabase (PostgreSQL), agentes (CrewAI + Python, Modal), API `/api/...` para orquestração
+
+## Estrutura de pastas (principais)
+
+- `app/` — rotas e layouts; grupo `(auth)` (login) e `(app)` (área com sidebar)
+- `app/(app)/…` — área autenticada (dashboard, clientes, projetos, briefing) — o route group `(app)` não entra no URL
+- `components/briefing/` — etapas do briefing (fase mockada com estado local)
+- `lib/mock/`, `lib/briefing/` — dados de exemplo e constantes
+- `components/` — partilhados
+- `lib/supabase/` — `client.ts` (browser) e `server.ts` (Server Components e Route Handlers)
+- `middleware.ts` — refresh de sessão e protecção de `/dashboard`, `/clientes`, `/projetos` e sub-rotas (não autenticado → `/login`)
+
+## Autenticação e rotas
+
+- Login: `GET /login` (e query `?next=/projetos/...` após o middleware, quando aplicável)
+- Área após login: `/dashboard`, `/projetos`, `/clientes`, etc.
+- Variáveis: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (ver `.env.local.example`)
+- A **service role** nunca no frontend; secrets só em variáveis de ambiente de servidor, quando forem usadas
+
+## UI e texto
+
+- Rótulos, mensagens e placeholders em **português**
+- Estética: paleta **agência ILI** — preto (`ili-preto`), cinza claro (`ili-cinza-*`), rosa (`ili-rosa-*` e alias `brand-*` no `tailwind.config.ts`)
+
+## Regras que manter (quando a funcionalidade existir)
+
+- API Routes de naming não expõem chaves de fornecedores de IA ao browser
+- O frontend de naming deve falar com rotas em `/api/...` do Next, não directamente com o serviço Python
+- Estado de fluxos (ex.: briefing) persistido com auto-save, quando implementado

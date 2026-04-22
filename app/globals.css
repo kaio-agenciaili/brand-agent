@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ILI: preto, cinza claro, rosa (acentos em componentes) */
+:root {
+  --foreground: #0a0a0a;
+  --background: #f0f0f0;
+  --ili-rosa: #d92f5c;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  min-height: 100dvh;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
