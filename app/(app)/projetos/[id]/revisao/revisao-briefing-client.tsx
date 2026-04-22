@@ -9,6 +9,7 @@ import { type EventoSSE } from "@/components/briefing/AgentesProcessando";
 import { AgentesLive } from "@/components/briefing/AgentesLive";
 import { FluxoNamingStepper } from "@/components/projetos/fluxo-naming-stepper";
 import { useBriefingProjeto } from "@/components/projetos/briefing-projeto-context";
+import { warmUpCrewFromBrowser } from "@/lib/crewai/browser-warmup";
 import type { BriefingStep3, BriefingState } from "@/lib/briefing/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,6 +41,7 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
   const router = useRouter();
   const { briefing, setBriefing, textoOriginal, setTextoOriginal } = useBriefingProjeto();
   const [processando, setProcessando] = useState(false);
+  const [faseProcesso, setFaseProcesso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [eventosSSE, setEventosSSE] = useState<EventoSSE[]>([]);
   const esRef = useRef<EventSource | null>(null);
@@ -71,9 +73,20 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
     setErro(null);
     setEventosSSE([]);
     setProcessando(true);
+    setFaseProcesso(null);
     encerrarSSE();
 
     try {
+      setFaseProcesso(
+        "A preparar o servidor de IA (no plano grátis do Render isto pode levar até ~1 min na primeira vez)…",
+      );
+      try {
+        await warmUpCrewFromBrowser();
+      } catch {
+        /* warm-up falhou (rede/CORS); ainda tentamos iniciar o job */
+      }
+      setFaseProcesso("A iniciar geração…");
+
       // 1. Iniciar job no Python via Next.js
       const startRes = await fetch("/api/naming/start", {
         method: "POST",
@@ -90,10 +103,12 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
       if (!startRes.ok || !startData.sucesso || !startData.job_id) {
         setErro(startData.erro || "Erro ao iniciar geração.");
         setProcessando(false);
+        setFaseProcesso(null);
         return;
       }
 
       const jobId = startData.job_id;
+      setFaseProcesso("Agentes a gerar nomes…");
 
       // 2. Conectar ao stream SSE
       const streamUrl = `/api/naming/stream?job_id=${encodeURIComponent(jobId)}&projeto_id=${encodeURIComponent(idProjeto)}`;
@@ -113,6 +128,7 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
         if (event.type === "done") {
           encerrarSSE();
           setProcessando(false);
+          setFaseProcesso(null);
           router.push(`/projetos/${idProjeto}/resultado`);
           router.refresh();
         }
@@ -120,23 +136,29 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
         if (event.type === "error") {
           encerrarSSE();
           setProcessando(false);
+          setFaseProcesso(null);
           setErro("Erro durante a geração. Tente novamente.");
         }
 
         if (event.type === "stream_end" || event.type === "timeout") {
           encerrarSSE();
           setProcessando(false);
+          setFaseProcesso(null);
         }
       };
 
       es.onerror = () => {
         encerrarSSE();
         setProcessando(false);
-        setErro("Conexão com o servidor perdida. Verifique se o servidor Python está a correr.");
+        setFaseProcesso(null);
+        setErro(
+          "Conexão com o servidor perdida. Confira se a API Python no Render está no ar e o CREWAI_SERVER_URL na Vercel.",
+        );
       };
     } catch (e) {
       setErro(String(e));
       setProcessando(false);
+      setFaseProcesso(null);
     }
   }
 
@@ -206,7 +228,9 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
               disabled={processando}
               className="w-full rounded-2xl bg-brand-600 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-700 disabled:opacity-50"
             >
-              {processando ? "Agentes a gerar nomes…" : "Confirmar e gerar nomes →"}
+              {processando
+                ? faseProcesso || "Agentes a gerar nomes…"
+                : "Confirmar e gerar nomes →"}
             </button>
             <p className="text-center text-sm text-ili-cinza-400">
               <Link

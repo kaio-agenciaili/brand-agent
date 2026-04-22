@@ -79,7 +79,8 @@ export async function POST(request: Request) {
         concorrentes_manuais: concor,
         briefing_estruturado: body.briefing as unknown as Record<string, unknown>,
       }),
-      signal: AbortSignal.timeout(15_000),
+      // Depois do warm-up no browser, costuma ser rápido; margem para rede lenta / Pro Vercel.
+      signal: AbortSignal.timeout(45_000),
     });
     const data = (await res.json()) as { job_id?: string };
     if (!data.job_id) throw new Error("Python não retornou job_id.");

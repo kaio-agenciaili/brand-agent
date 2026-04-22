@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import uuid
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -11,15 +12,23 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Brand Agent API")
 
+_cors_extra = [o.strip() for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()]
+_cors_origins = list(
+    dict.fromkeys(
+        [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+        ]
+        + _cors_extra
+    )
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:\d+|http://127\.0\.0\.1:\d+",
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
