@@ -68,13 +68,19 @@ export function StatusView({ initialData, initialError }: Props) {
       } catch {
         setErro(
           r.ok
-            ? "Resposta inválida (não é JSON). Tenta recarregar a página."
-            : `Erro ${r.status}: resposta inesperada do servidor.`,
+            ? "Resposta inválida (não é JSON). Tente recarregar a página."
+            : r.status === 504
+              ? "Erro 504 (tempo esgotado no servidor). Comum no plano grátis da Vercel se a checagem demorar demais — abra a URL da API no Render, espere acordar, e clique em Atualizar."
+              : `Erro ${r.status}: resposta inesperada do servidor.`,
         );
         return;
       }
       if (!r.ok) {
-        setErro(`HTTP ${r.status}`);
+        setErro(
+          r.status === 504
+            ? "HTTP 504: a função /api/status estourou o tempo na Vercel. Acorde o serviço no Render (abra o URL da API) e tente de novo."
+            : `HTTP ${r.status}`,
+        );
         return;
       }
       setData(j);
@@ -191,7 +197,7 @@ export function StatusView({ initialData, initialError }: Props) {
               extra={
                 !pyOk
                   ? pyRenderGratis
-                    ? `Render (plano grátis): a instância “dorme”. O primeiro pedido pode levar 1 minuto — esta página só espera ~10s.\n` +
+                    ? `Render (plano grátis): a instância “dorme”. O primeiro pedido pode levar 1 minuto — a Vercel só deixa a checagem usar ~7s (senão dá 504).\n` +
                       `1) Abre a URL da API num separador e espera carregar de verdade.\n` +
                       `2) Volta aqui e clica “Atualizar”.\n` +
                       `Alternativa: plano pago no Render para o serviço ficar sempre ligado.`

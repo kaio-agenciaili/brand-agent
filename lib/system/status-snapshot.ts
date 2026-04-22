@@ -2,9 +2,13 @@ import { crewaiUrlForNodeFetch, getCrewaiBaseUrl } from "@/lib/crewai/url";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-const GET_USER_MS = 10_000;
-/** Render grátis e similares demoram a “acordar”; 5s falhava sempre no cold start. Vercel Hobby limita a função a ~10s. */
-const PYTHON_CHECK_MS = 10_000;
+/** Curto o suficiente para a rota inteira caber no limite da Vercel (~10s); se demorar mais, a plataforma devolve 504 sem JSON. */
+const GET_USER_MS = 5_000;
+/**
+ * Paralelo a GET_USER_MS (Promise.all): o tempo total ≈ max dos dois + overhead.
+ * Manter folga abaixo de ~9s evita 504 no plano gratuito da Vercel.
+ */
+const PYTHON_CHECK_MS = 7_500;
 
 function abortAfter(ms: number) {
   return AbortSignal.timeout(ms);
