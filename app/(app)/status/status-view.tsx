@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { warmUpCrewFromBrowser } from "@/lib/crewai/browser-warmup";
 import type { SystemStatusSnapshot } from "@/lib/system/status-snapshot";
+import { useCallback, useState } from "react";
 
 function Indicador({
   titulo,
@@ -47,10 +48,17 @@ type Props = {
   initialError: string | null;
 };
 
+type TesteBrowserState =
+  | { fase: "idle" }
+  | { fase: "a_correr" }
+  | { fase: "ok"; ms: number }
+  | { fase: "erro"; msg: string };
+
 export function StatusView({ initialData, initialError }: Props) {
   const [data, setData] = useState<SystemStatusSnapshot | null>(initialData);
   const [erro, setErro] = useState<string | null>(initialError);
   const [aCarregar, setACarregar] = useState(false);
+  const [testeBrowser, setTesteBrowser] = useState<TesteBrowserState>({ fase: "idle" });
 
   const recarregar = useCallback(async () => {
     setACarregar(true);
@@ -100,6 +108,18 @@ export function StatusView({ initialData, initialError }: Props) {
     } finally {
       clearTimeout(t);
       setACarregar(false);
+    }
+  }, []);
+
+  const testarPythonNoBrowser = useCallback(async () => {
+    setTesteBrowser({ fase: "a_correr" });
+    const t0 = performance.now();
+    try {
+      await warmUpCrewFromBrowser(120_000);
+      const ms = Math.round(performance.now() - t0);
+      setTesteBrowser({ fase: "ok", ms });
+    } catch (e) {
+      setTesteBrowser({ fase: "erro", msg: String(e) });
     }
   }, []);
 
@@ -223,6 +243,72 @@ export function StatusView({ initialData, initialError }: Props) {
                 e espera sair da página de “carregando”; depois “Atualizar” aqui.
               </p>
             )}
+
+            <div className="rounded-2xl border border-ili-cinza-200 bg-white/90 p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-ili-preto">
+                Testes para diagnóstico
+              </h2>
+              <p className="mt-1 text-xs text-ili-cinza-500">
+                Host que o servidor Next usa:{" "}
+                <code className="rounded bg-ili-cinza-100 px-1 py-0.5 text-ili-preto">
+                  {data.dicas.crewHostname}
+                </code>
+                {!data.dicas.envCrew && (
+                  <span className="ml-1 text-amber-700">
+                    (CREWAI_SERVER_URL não definido — fallback local)
+                  </span>
+                )}
+              </p>
+              <p className="mt-2 text-sm text-ili-cinza-600">
+                <strong className="font-medium text-ili-preto">Teste pelo browser</strong>{" "}
+                — igual ao aquecimento antes de “Gerar nomes”. Pode levar até ~2 min no Render
+                grátis. Não passa pelo limite curto da Vercel.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={testarPythonNoBrowser}
+                  disabled={testeBrowser.fase === "a_correr" || !supaOk}
+                  className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                  title={
+                    !supaOk
+                      ? "Inicie sessão para obter a URL da API e testar CORS."
+                      : undefined
+                  }
+                >
+                  {testeBrowser.fase === "a_correr"
+                    ? "Conectando à API…"
+                    : "Testar ligação browser → Python"}
+                </button>
+                <button
+                  type="button"
+                  onClick={recarregar}
+                  disabled={aCarregar}
+                  className="rounded-lg border border-ili-cinza-200 bg-white px-3 py-2 text-sm font-medium text-ili-preto hover:border-brand-300 disabled:opacity-50"
+                >
+                  Depois: Atualizar painel (servidor → Python)
+                </button>
+              </div>
+              {testeBrowser.fase === "ok" && (
+                <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/80 p-2 text-sm text-emerald-900">
+                  OK em {testeBrowser.ms} ms. Clique em{" "}
+                  <strong className="font-medium">Depois: Atualizar painel</strong> — a caixa
+                  Python costuma ficar verde se o servidor Vercel conseguir responder a tempo.
+                </p>
+              )}
+              {testeBrowser.fase === "erro" && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-800">
+                  Falhou: {testeBrowser.msg}. Confira CORS no Render{" "}
+                  <code className="text-xs">CORS_EXTRA_ORIGINS</code> se usar domínio próprio, ou
+                  abra a URL da API num separador.
+                </p>
+              )}
+              <p className="mt-3 text-xs text-ili-cinza-400">
+                <strong className="text-ili-cinza-500">Atualizar</strong> no topo = checagem pelo{" "}
+                <em>servidor</em> Vercel (~7,5 s). Se der timeout com o Render a dormir, use o
+                teste pelo browser acima primeiro.
+              </p>
+            </div>
           </div>
         </>
       )}

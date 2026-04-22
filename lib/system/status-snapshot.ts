@@ -2,6 +2,14 @@ import { crewaiUrlForNodeFetch, getCrewaiBaseUrl } from "@/lib/crewai/url";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
+function hostnameCrewUi(base: string): string {
+  try {
+    return new URL(base).hostname;
+  } catch {
+    return "(URL inválida)";
+  }
+}
+
 /** Curto o suficiente para a rota inteira caber no limite da Vercel (~10s); se demorar mais, a plataforma devolve 504 sem JSON. */
 const GET_USER_MS = 5_000;
 /**
@@ -31,6 +39,8 @@ export type SystemStatusSnapshot = {
   dicas: {
     envCrew: boolean;
     fallbackUrl: string;
+    /** Host extraído de CREWAI_SERVER_URL — só para conferir config, sem segredo. */
+    crewHostname: string;
   };
 };
 
@@ -134,6 +144,7 @@ export async function getSystemStatusSnapshot(): Promise<SystemStatusSnapshot> {
     dicas: {
       envCrew: Boolean(process.env.CREWAI_SERVER_URL?.trim()),
       fallbackUrl: "http://127.0.0.1:8000",
+      crewHostname: hostnameCrewUi(base),
     },
   };
 }
