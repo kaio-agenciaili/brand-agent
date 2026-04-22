@@ -2,7 +2,7 @@
 
 import { warmUpCrewFromBrowser } from "@/lib/crewai/browser-warmup";
 import type { SystemStatusSnapshot } from "@/lib/system/status-snapshot";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function Indicador({
   titulo,
@@ -59,6 +59,16 @@ export function StatusView({ initialData, initialError }: Props) {
   const [erro, setErro] = useState<string | null>(initialError);
   const [aCarregar, setACarregar] = useState(false);
   const [testeBrowser, setTesteBrowser] = useState<TesteBrowserState>({ fase: "idle" });
+  const [testeSegundos, setTesteSegundos] = useState(0);
+
+  useEffect(() => {
+    if (testeBrowser.fase !== "a_correr") return;
+    setTesteSegundos(0);
+    const id = window.setInterval(() => {
+      setTesteSegundos((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [testeBrowser.fase]);
 
   const recarregar = useCallback(async () => {
     setACarregar(true);
@@ -115,7 +125,7 @@ export function StatusView({ initialData, initialError }: Props) {
     setTesteBrowser({ fase: "a_correr" });
     const t0 = performance.now();
     try {
-      await warmUpCrewFromBrowser(120_000);
+      await warmUpCrewFromBrowser();
       const ms = Math.round(performance.now() - t0);
       setTesteBrowser({ fase: "ok", ms });
     } catch (e) {
@@ -261,8 +271,9 @@ export function StatusView({ initialData, initialError }: Props) {
               </p>
               <p className="mt-2 text-sm text-ili-cinza-600">
                 <strong className="font-medium text-ili-preto">Teste pelo browser</strong>{" "}
-                — igual ao aquecimento antes de “Gerar nomes”. Pode levar até ~2 min no Render
-                grátis. Não passa pelo limite curto da Vercel.
+                — igual ao aquecimento antes de “Gerar nomes”. No Render grátis pode levar{" "}
+                <strong className="font-medium text-ili-preto">vários minutos</strong> (timeout até
+                5 min). Não passa pelo limite curto da Vercel.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
@@ -277,7 +288,7 @@ export function StatusView({ initialData, initialError }: Props) {
                   }
                 >
                   {testeBrowser.fase === "a_correr"
-                    ? "Conectando à API…"
+                    ? `Conectando à API… (${testeSegundos}s / até ~300s)`
                     : "Testar ligação browser → Python"}
                 </button>
                 <button
@@ -298,9 +309,32 @@ export function StatusView({ initialData, initialError }: Props) {
               )}
               {testeBrowser.fase === "erro" && (
                 <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-800">
-                  Falhou: {testeBrowser.msg}. Confira CORS no Render{" "}
-                  <code className="text-xs">CORS_EXTRA_ORIGINS</code> se usar domínio próprio, ou
-                  abra a URL da API num separador.
+                  Falhou: {testeBrowser.msg}.
+                  {/timed out|TimeoutError/i.test(testeBrowser.msg) ? (
+                    <>
+                      {" "}
+                      O Render grátis pode demorar mais que isso a acordar, ou o serviço não está a
+                      subir. Abra{" "}
+                      <a
+                        href={data.python.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium underline"
+                      >
+                        a API no browser
+                      </a>{" "}
+                      e no painel do Render veja <strong className="font-medium">Logs</strong> —
+                      erros de deploy ou de <code className="text-xs">uvicorn</code> aparecem lá.
+                      Com domínio próprio na Vercel, defina{" "}
+                      <code className="text-xs">CORS_EXTRA_ORIGINS</code> no Render.
+                    </>
+                  ) : (
+                    <>
+                      {" "}
+                      Confira <code className="text-xs">CORS_EXTRA_ORIGINS</code> no Render se usar
+                      domínio próprio.
+                    </>
+                  )}
                 </p>
               )}
               <p className="mt-3 text-xs text-ili-cinza-400">
