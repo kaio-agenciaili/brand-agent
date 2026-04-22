@@ -86,7 +86,7 @@ export function StatusView({ initialData, initialError }: Props) {
         (e instanceof Error && e.name === "AbortError");
       if (aborted) {
         setErro(
-          "A verificação demorou demasiado (timeout 30s). O servidor Next ou o Supabase podem estar bloqueados — verifica a consola/terminal e a rede.",
+          "A verificação demorou demais (timeout 30s). O servidor Next ou o Supabase podem estar sobrecarregados — confira o terminal e a rede.",
         );
       } else {
         setErro(String(e));
@@ -150,7 +150,7 @@ export function StatusView({ initialData, initialError }: Props) {
             <p className="text-sm font-medium text-ili-preto">
               {geralOk
                 ? "Tudo operacional para o fluxo (Supabase + sessão + API Python)."
-                : "Algum componente precisa de atenção. Vê as caixas abaixo e as dicas."}
+                : "Algum componente precisa de atenção. Veja as caixas abaixo e as dicas."}
             </p>
             <p className="mt-1 text-xs text-ili-cinza-500">
               Última verificação: {data.timestamp}
@@ -162,9 +162,9 @@ export function StatusView({ initialData, initialError }: Props) {
               titulo="Supabase + sessão"
               sub={
                 !data.supabase.envConfigured
-                  ? "Variáveis públicas do Supabase em falta no .env.local."
+                  ? "Variáveis públicas do Supabase em falta (local: .env.local; Vercel: Environment Variables)."
                   : data.supabase.session === "autenticado"
-                    ? "Sessão activa: leitura/escrita com o teu utilizador."
+                    ? "Sessão ativa: leitura/escrita com o seu usuário."
                     : `Estado: ${data.supabase.session}${
                         data.supabase.message
                           ? ` — ${data.supabase.message}`
@@ -174,7 +174,7 @@ export function StatusView({ initialData, initialError }: Props) {
               ok={supaOk}
               extra={
                 !supaOk && !data.supabase.message
-                  ? "Inicia sessão para marcar verde, ou preenche NEXT_PUBLIC_SUPABASE_* na raiz do projecto."
+                  ? "Inicie sessão para marcar verde, ou defina NEXT_PUBLIC_SUPABASE_* na raiz do projeto (ou no painel da Vercel)."
                   : data.supabase.message
               }
             />

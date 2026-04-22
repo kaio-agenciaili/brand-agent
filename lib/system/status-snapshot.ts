@@ -62,7 +62,7 @@ export async function getSystemStatusSnapshot(): Promise<SystemStatusSnapshot> {
         return {
           session: "erro" as const,
           supaMsg:
-            "Timeout ao contactar o Supabase (rede ou configuração). Tenta de novo.",
+            "Timeout ao contatar o Supabase (rede ou configuração). Tente de novo.",
         };
       }
       const {
