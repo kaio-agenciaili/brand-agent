@@ -30,10 +30,16 @@ const compr: { v: ComprimentoPreferido; l: string }[] = [
 ];
 
 const exts: { v: ExtensaoDominio; l: string }[] = [
-  { v: "com.br", l: ".com.br" },
   { v: "com", l: ".com" },
+  { v: "com.br", l: ".com.br" },
+  { v: "net", l: ".net" },
+  { v: "org", l: ".org" },
+  { v: "co", l: ".co" },
   { v: "io", l: ".io" },
+  { v: "ai", l: ".ai" },
   { v: "app", l: ".app" },
+  { v: "dev", l: ".dev" },
+  { v: "digital", l: ".digital" },
 ];
 
 function toggleArray<T>(list: T[], v: T): T[] {
@@ -55,9 +61,6 @@ function pilulas(
 }
 
 export function Step5Diretrizes({ value, onChange }: Props) {
-  const soComBr =
-    value.extensoes.length === 1 && value.extensoes[0] === "com.br";
-
   return (
     <div className="space-y-8">
       <p className="text-xs text-ili-cinza-400">
@@ -161,55 +164,23 @@ export function Step5Diretrizes({ value, onChange }: Props) {
         placeholderLivre="Notas extra (opcional)…"
       />
 
-      <div>
-        <p className="mb-2 text-sm font-medium text-ili-cinza-500">
-          Extensões de domínio (múltipla escolha)
+      <div className="rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/60 px-3 py-3">
+        <p className="text-sm font-medium text-ili-cinza-500">
+          Domínios checados automaticamente
         </p>
-        <div className="flex flex-wrap gap-2">
-          {exts.map((e) => {
-            const on = value.extensoes.includes(e.v);
-            return (
-              <button
-                key={e.v}
-                type="button"
-                onClick={() =>
-                  onChange({ extensoes: toggleArray(value.extensoes, e.v) })
-                }
-                className={`rounded-lg border px-3 py-1.5 text-sm ${
-                  on
-                    ? "border-brand-600 bg-ili-rosa-50 text-brand-900"
-                    : "border-ili-cinza-200 bg-white"
-                }`}
-              >
-                {e.l}
-              </button>
-            );
-          })}
+        <p className="mt-1 text-xs leading-relaxed text-ili-cinza-400">
+          No resultado, o sistema checa por padrão as extensões mais usadas. Não é preciso escolher nesta etapa.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {exts.map((e) => (
+            <span
+              key={e.v}
+              className="rounded-full border border-ili-cinza-200 bg-white px-2.5 py-1 text-xs font-medium text-ili-cinza-500"
+            >
+              {e.l}
+            </span>
+          ))}
         </div>
-        {soComBr ? (
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-900">
-            <span className="font-medium">Só .com.br?</span> Se tiver interesse
-            em <strong>.com</strong>, <strong>.io</strong> ou <strong>.app</strong>{" "}
-            para defesa de marca ou expansão, seleccione acima ou diga ao cliente
-            para validar disponibilidade nesses TLDs.
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(["com", "io", "app"] as const).map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      extensoes: toggleArray(value.extensoes, x),
-                    })
-                  }
-                  className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
-                >
-                  + .{x}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );

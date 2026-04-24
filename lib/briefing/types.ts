@@ -39,7 +39,17 @@ export type TipoNomePreferido =
 
 export type ComprimentoPreferido = "1" | "2-3" | "4+" | "sem";
 
-export type ExtensaoDominio = "com.br" | "com" | "io" | "app";
+export type ExtensaoDominio =
+  | "com.br"
+  | "com"
+  | "net"
+  | "org"
+  | "co"
+  | "io"
+  | "ai"
+  | "app"
+  | "dev"
+  | "digital";
 
 /** Pílulas sugeridas pela IA; o humano selecciona as que aplicam. */
 export type PilulasDiretriz = {
@@ -174,7 +184,7 @@ export function estadoBriefingVazio(): BriefingState {
       nomesNegativar: "",
       sinonimosGosto: "",
       outrasNotasNaming: "",
-      extensoes: ["com", "com.br"],
+      extensoes: ["com", "com.br", "co", "io", "ai", "app"],
       pilulasSinonimos: pilulasDiretrizVazias(),
       pilulasEvitar: pilulasDiretrizVazias(),
       pilulasInspiram: pilulasDiretrizVazias(),

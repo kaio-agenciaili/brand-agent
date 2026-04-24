@@ -5,7 +5,7 @@ import { FluxoNamingStepper } from "@/components/projetos/fluxo-naming-stepper";
 import { useBriefingProjeto } from "@/components/projetos/briefing-projeto-context";
 import type { BriefingState } from "@/lib/briefing/types";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   idProjeto: string;
@@ -26,8 +26,11 @@ export function ProjetosInputClient({
     useBriefingProjeto();
 
   const [desafio, setDesafio] = useState("");
+  const [arquivos, setArquivos] = useState<string[]>([]);
+  const [avisoArquivo, setAvisoArquivo] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const inputArquivoRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (textoRascunhoInicial) {
@@ -83,6 +86,46 @@ export function ProjetosInputClient({
     }
   }
 
+  async function anexarArquivos(files: FileList | null) {
+    if (!files?.length) return;
+    setAvisoArquivo(null);
+    const anexados: string[] = [];
+    const textos: string[] = [];
+    const naoLidos: string[] = [];
+    const extensoesTexto = [".txt", ".md", ".markdown", ".srt", ".vtt", ".csv"];
+
+    for (const file of Array.from(files)) {
+      anexados.push(file.name);
+      const nome = file.name.toLowerCase();
+      const pareceTexto =
+        file.type.startsWith("text/") || extensoesTexto.some((ext) => nome.endsWith(ext));
+      if (!pareceTexto) {
+        naoLidos.push(file.name);
+        continue;
+      }
+      try {
+        const texto = await file.text();
+        textos.push(`## Arquivo anexado: ${file.name}\n${texto.trim()}`);
+      } catch {
+        naoLidos.push(file.name);
+      }
+    }
+
+    setArquivos((prev) => [...prev, ...anexados]);
+    if (textos.length) {
+      const atual = textoOriginal.trim();
+      setTextoOriginal([atual, ...textos].filter(Boolean).join("\n\n"));
+    }
+    if (naoLidos.length) {
+      setAvisoArquivo(
+        `Anexei ${naoLidos.join(", ")} como referência, mas este formato ainda não é transcrito automaticamente. Cole a transcrição no campo de texto.`,
+      );
+    }
+    if (inputArquivoRef.current) {
+      inputArquivoRef.current.value = "";
+    }
+  }
+
   return (
     <>
       <FluxoNamingStepper idProjeto={idProjeto} etapaAtual={1} />
@@ -107,6 +150,51 @@ export function ProjetosInputClient({
           </p>
         </header>
         <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <section className="rounded-2xl border border-dashed border-brand-200 bg-ili-rosa-50/40 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-ili-preto">
+                  Anexar material da reunião
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-ili-cinza-500">
+                  Use transcrições em .txt, .md, .srt, .vtt ou cole o conteúdo abaixo. PDF, DOCX e áudio podem ser selecionados como referência, mas ainda precisam de transcrição em texto.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={processando}
+                onClick={() => inputArquivoRef.current?.click()}
+                className="shrink-0 rounded-xl border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-800 shadow-sm transition hover:border-brand-400 disabled:opacity-50"
+              >
+                Subir arquivo
+              </button>
+            </div>
+            <input
+              ref={inputArquivoRef}
+              type="file"
+              multiple
+              accept=".txt,.md,.markdown,.srt,.vtt,.csv,.pdf,.doc,.docx,.mp3,.mp4,.m4a,.wav,.ogg"
+              className="hidden"
+              onChange={(e) => void anexarArquivos(e.target.files)}
+            />
+            {arquivos.length ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {arquivos.map((nome, idx) => (
+                  <span
+                    key={`${nome}-${idx}`}
+                    className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-ili-cinza-500"
+                  >
+                    {nome}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {avisoArquivo ? (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {avisoArquivo}
+              </p>
+            ) : null}
+          </section>
           <div>
             <label
               htmlFor="briefing-desafio"

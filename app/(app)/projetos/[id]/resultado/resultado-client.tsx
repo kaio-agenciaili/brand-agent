@@ -8,7 +8,22 @@ import {
   type Top3Item,
 } from "@/lib/resultado/naming-display";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type StatusAvaliacaoNome = "shortlist" | "negativado" | "neutro";
+
+type AvaliacaoNome = {
+  status: StatusAvaliacaoNome;
+  nota?: string;
+};
+
+type StatusDominio = "registrado" | "disponivel" | "sem_registro_encontrado" | "indeterminado";
+
+type ResultadoDominio = {
+  dominio: string;
+  status: StatusDominio;
+  fonte: string;
+};
 
 type Props = {
   idProjeto: string;
@@ -17,7 +32,130 @@ type Props = {
   nomesGeral: Record<string, unknown> | null;
   nomesEscolhidos: string[];
   notasNomes: Record<string, string>;
+  avaliacoesNomes: Record<string, AvaliacaoNome>;
 };
+
+const dominiosPopulares = ["com", "com.br", "net", "org", "co", "io", "ai", "app", "dev", "digital"];
+
+function gerarPromptInpi(params: {
+  nomeProjeto: string;
+  shortlist: PropostaNaming[];
+  negativados: PropostaNaming[];
+  notas: Record<string, string>;
+  sintese: string | null;
+}): string {
+  const nomesSelecionados = params.shortlist.map((p) => `- ${p.nome}`).join("\n") || "- Nenhum";
+  const nomesNegativados =
+    params.negativados
+      .map((p) => `- ${p.nome}${params.notas[p.nome ?? ""] ? `: ${params.notas[p.nome ?? ""]}` : ""}`)
+      .join("\n") || "- Nenhum";
+
+  return `Você é um assistente de pré-checagem de marcas para naming no Brasil.
+
+Analise apenas os nomes selecionados para shortlist. A tarefa é orientar uma busca manual no INPI e em buscas públicas, sem emitir parecer jurídico.
+
+Projeto:
+${params.nomeProjeto}
+
+Síntese estratégica:
+${params.sintese ?? "Não informada."}
+
+Nomes selecionados para checagem:
+${nomesSelecionados}
+
+Nomes negativados da rodada, apenas como aprendizado do que evitar:
+${nomesNegativados}
+
+Para cada nome selecionado:
+1. Sugira buscas no INPI: nome exato, variações com e sem acento, grafias similares, radicais, plural/singular e termos foneticamente próximos.
+2. Sugira classes NCL prováveis e explique o motivo.
+3. Aponte riscos preliminares: nomes iguais, nomes parecidos, colisão fonética, colisão semântica e termos genéricos/descritivos.
+4. Gere uma tabela com: nome, termos de busca INPI, classes NCL prováveis, risco preliminar, motivo e recomendação.
+5. Sugira também buscas amplas no Google para marcas, empresas, produtos, domínios e redes sociais.
+
+Importante: não dê parecer jurídico. Faça apenas triagem preliminar para orientar a validação profissional no INPI.`;
+}
+
+function gerarPromptApresentacao(params: {
+  nomeProjeto: string;
+  shortlist: PropostaNaming[];
+  notas: Record<string, string>;
+  sintese: string | null;
+  relatorioFinal: string;
+}): string {
+  const nomes = params.shortlist
+    .map((p) => {
+      const nota = params.notas[p.nome ?? ""];
+      return `- ${p.nome}: ${p.base_conceitual ?? p.justificativa ?? ""}${nota ? `\n  Nota do analista: ${nota}` : ""}`;
+    })
+    .join("\n") || "- Nenhum nome selecionado";
+
+  return `Você é um estrategista de marca preparando uma apresentação de naming para cliente.
+
+Crie uma apresentação clara e profissional explicando como os nomes foram selecionados.
+
+Projeto:
+${params.nomeProjeto}
+
+Síntese das bases:
+${params.sintese ?? "Não informada."}
+
+Nomes selecionados para apresentação:
+${nomes}
+
+Relatório e contexto disponível:
+${params.relatorioFinal || "Não informado."}
+
+Estruture a apresentação em slides:
+1. Título do projeto
+2. Objetivo do naming
+3. Contexto e desafio
+4. Critérios de pesquisa e seleção
+5. Territórios estratégicos usados
+6. Benchmark e aprendizados
+7. Como a pesquisa foi conduzida
+8. Shortlist de nomes
+9. Um slide por nome selecionado, com ideia central, racional estratégico, relação com briefing, forças, pontos de atenção e caminhos visuais/verbais possíveis
+10. Recomendação e próximos passos
+
+Tom: consultivo, estratégico, claro e pronto para apresentação a cliente.`;
+}
+
+function dominiosParaNome(nome: string): string[] {
+  const slug = nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  if (!slug) return [];
+  return dominiosPopulares.map((ext) => `${slug}.${ext}`);
+}
+
+function rotuloStatusDominio(status: StatusDominio): string {
+  switch (status) {
+    case "registrado":
+      return "registrado";
+    case "disponivel":
+      return "disponível";
+    case "sem_registro_encontrado":
+      return "sem registro encontrado";
+    default:
+      return "indeterminado";
+  }
+}
+
+function classeStatusDominio(status: StatusDominio): string {
+  switch (status) {
+    case "registrado":
+      return "bg-red-50 text-red-700 border-red-100";
+    case "disponivel":
+      return "bg-emerald-50 text-emerald-700 border-emerald-100";
+    case "sem_registro_encontrado":
+      return "bg-amber-50 text-amber-800 border-amber-100";
+    default:
+      return "bg-ili-cinza-100 text-ili-cinza-500 border-ili-cinza-200";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Sub-componentes
@@ -125,15 +263,21 @@ function CartaoProposta({
   p,
   idx,
   favorito,
+  status,
   nota,
+  dominiosNome,
   onToggleFavorito,
+  onStatus,
   onNota,
 }: {
   p: PropostaNaming;
   idx: number;
   favorito: boolean;
+  status: StatusAvaliacaoNome;
   nota: string;
+  dominiosNome: ResultadoDominio[];
   onToggleFavorito: () => void;
+  onStatus: (status: StatusAvaliacaoNome) => void;
   onNota: (n: string) => void;
 }) {
   const [expandido, setExpandido] = useState(false);
@@ -148,8 +292,10 @@ function CartaoProposta({
   return (
     <div
       className={`rounded-2xl border bg-white shadow-sm transition-all duration-200 ${
-        favorito
+        status === "shortlist"
           ? "border-brand-300 ring-1 ring-brand-200"
+          : status === "negativado"
+            ? "border-red-200 bg-red-50/20"
           : "border-ili-cinza-200 hover:border-ili-cinza-300"
       }`}
     >
@@ -160,7 +306,22 @@ function CartaoProposta({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-ili-cinza-300">{idx + 1}</span>
               <h3 className="text-lg font-semibold text-ili-preto">{p.nome ?? "—"}</h3>
+              {status === "shortlist" ? (
+                <span className="inline-block rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  Selecionado
+                </span>
+              ) : null}
+              {status === "negativado" ? (
+                <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                  Negativado
+                </span>
+              ) : null}
               <BadgeCategoria categoria={p.categoria} />
+              {p.territorio_estrategico ? (
+                <span className="inline-block rounded-full bg-ili-cinza-100 px-2 py-0.5 text-xs font-medium text-ili-cinza-500">
+                  {p.territorio_estrategico}
+                </span>
+              ) : null}
               {p.colisao_marca_grande ? (
                 <span
                   className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800"
@@ -192,8 +353,8 @@ function CartaoProposta({
                 ? "text-brand-600 hover:text-brand-400"
                 : "text-ili-cinza-300 hover:text-brand-400"
             }`}
-            title={favorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-            aria-label={favorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            title={favorito ? "Remover da shortlist" : "Adicionar à shortlist"}
+            aria-label={favorito ? "Remover da shortlist" : "Adicionar à shortlist"}
           >
             <svg className="h-5 w-5" fill={favorito ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
@@ -209,6 +370,11 @@ function CartaoProposta({
         {/* Scores */}
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <ScoreRegistrabilidade score={p.score_registrabilidade} />
+          {p.score_final ? (
+            <div className="text-xs font-medium text-ili-cinza-400" title="Score final estratégico">
+              Final {p.score_final}/5
+            </div>
+          ) : null}
           {p.fonetica?.score_fonetico && (
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-ili-cinza-400">Fon.</span>
@@ -223,6 +389,25 @@ function CartaoProposta({
             <span className="font-medium">IP:</span> {p.alerta}
           </p>
         )}
+
+        {dominiosNome.length ? (
+          <div className="mt-3 rounded-xl border border-ili-cinza-100 bg-ili-cinza-50/60 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ili-cinza-400">
+              Domínios
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {dominiosNome.map((item) => (
+                <span
+                  key={item.dominio}
+                  className={`rounded-full border px-2 py-0.5 text-[11px] ${classeStatusDominio(item.status)}`}
+                  title="Checagem preliminar via RDAP. Confirme no registrador."
+                >
+                  {item.dominio} · {rotuloStatusDominio(item.status)}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {/* Expandir / Recolher */}
         <button
@@ -248,12 +433,44 @@ function CartaoProposta({
                 <p className="mt-0.5 text-sm leading-relaxed text-ili-cinza-600">{p.justificativa}</p>
               </div>
             )}
+            {p.por_que_e_diferente_dos_concorrentes && (
+              <div>
+                <p className="text-xs font-medium text-ili-cinza-400">Diferenciação vs concorrentes</p>
+                <p className="mt-0.5 text-sm leading-relaxed text-ili-cinza-600">
+                  {p.por_que_e_diferente_dos_concorrentes}
+                </p>
+              </div>
+            )}
             {p.fonetica && <PainelFonetica fon={p.fonetica} />}
           </div>
         )}
 
         {/* Nota do analista */}
         <div className="mt-3 border-t border-ili-cinza-100 pt-3">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onStatus(status === "shortlist" ? "neutro" : "shortlist")}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                status === "shortlist"
+                  ? "border-brand-300 bg-ili-rosa-50 text-brand-800"
+                  : "border-ili-cinza-200 text-ili-cinza-500 hover:border-brand-200 hover:text-brand-700"
+              }`}
+            >
+              Shortlist
+            </button>
+            <button
+              type="button"
+              onClick={() => onStatus(status === "negativado" ? "neutro" : "negativado")}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                status === "negativado"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-ili-cinza-200 text-ili-cinza-500 hover:border-red-200 hover:text-red-700"
+              }`}
+            >
+              Negativar
+            </button>
+          </div>
           {editandoNota ? (
             <div className="flex flex-col gap-2">
               <textarea
@@ -360,12 +577,29 @@ export function ResultadoClient({
   nomesGeral,
   nomesEscolhidos: initialFavoritos,
   notasNomes: initialNotas,
+  avaliacoesNomes: initialAvaliacoes,
 }: Props) {
   const [relatorioAberto, setRelatorioAberto] = useState(false);
-  const [favoritos, setFavoritos] = useState<Set<string>>(new Set(initialFavoritos));
+  const initialSelecionados = [
+    ...initialFavoritos,
+    ...Object.entries(initialAvaliacoes)
+      .filter(([, avaliacao]) => avaliacao.status === "shortlist")
+      .map(([nome]) => nome),
+  ];
+  const [favoritos, setFavoritos] = useState<Set<string>>(new Set(initialSelecionados));
   const [notas, setNotas] = useState<Record<string, string>>(initialNotas);
+  const [avaliacoes, setAvaliacoes] = useState<Record<string, AvaliacaoNome>>(() => {
+    const base = { ...initialAvaliacoes };
+    for (const nome of initialSelecionados) {
+      base[nome] = { ...(base[nome] ?? {}), status: "shortlist" };
+    }
+    return base;
+  });
   const [salvandoFavoritos, setSalvandoFavoritos] = useState(false);
   const [salvandoNota, setSalvandoNota] = useState(false);
+  const [salvandoAvaliacao, setSalvandoAvaliacao] = useState(false);
+  const [dominios, setDominios] = useState<Record<string, ResultadoDominio>>({});
+  const [checandoDominios, setChecandoDominios] = useState(false);
 
   // — Refinamento (nome sugerido pelo analista)
   const [nomeSugerido, setNomeSugerido] = useState("");
@@ -378,47 +612,193 @@ export function ResultadoClient({
   const propostas = Array.isArray(parsed?.propostas) ? parsed!.propostas : [];
   const top3 = Array.isArray(parsed?.top3) ? parsed!.top3 : [];
   const sintese = typeof parsed?.sintese_bases === "string" ? parsed.sintese_bases : null;
+  const favoritosKey = Array.from(favoritos).sort().join("|");
+  const avaliacoesKey = Object.entries(avaliacoes)
+    .map(([nome, avaliacao]) => `${nome}:${avaliacao.status}`)
+    .sort()
+    .join("|");
+  const propostasKey = propostas.map((p) => p.nome ?? "").join("|");
+  const propostasVisiveis = useMemo(() => {
+    const byNome = new Map<string, PropostaNaming>();
+    for (const proposta of propostas) {
+      const nome = proposta.nome?.trim();
+      if (nome) byNome.set(nome.toLocaleLowerCase("pt-BR"), proposta);
+    }
+    const nomesSelecionados = new Set<string>();
+    for (const nome of Array.from(favoritos)) {
+      if (nome.trim()) nomesSelecionados.add(nome.trim());
+    }
+    for (const [nome, avaliacao] of Object.entries(avaliacoes)) {
+      if (avaliacao.status === "shortlist" && nome.trim()) {
+        nomesSelecionados.add(nome.trim());
+      }
+    }
+    for (const nome of Array.from(nomesSelecionados)) {
+      const key = nome.toLocaleLowerCase("pt-BR");
+      if (!byNome.has(key)) {
+        byNome.set(key, {
+          nome,
+          categoria: "selecionado",
+          base_conceitual: "Nome selecionado anteriormente pelo analista.",
+        });
+      }
+    }
+    return Array.from(byNome.values());
+  }, [propostasKey, favoritosKey, avaliacoesKey]);
+
+  const shortlistArr = propostasVisiveis.filter((p) => p.nome && avaliacoes[p.nome]?.status === "shortlist");
+  const negativadosArr = propostasVisiveis.filter((p) => p.nome && avaliacoes[p.nome]?.status === "negativado");
+  const novosArr = propostasVisiveis.filter((p) => {
+    const status = p.nome ? avaliacoes[p.nome]?.status : undefined;
+    return status !== "shortlist" && status !== "negativado";
+  });
+  const dominiosResultado = useMemo(
+    () => propostasVisiveis.flatMap((p) => dominiosParaNome(p.nome ?? "")),
+    [propostasKey, favoritosKey, avaliacoesKey],
+  );
+  const promptInpi = gerarPromptInpi({
+    nomeProjeto,
+    shortlist: shortlistArr,
+    negativados: negativadosArr,
+    notas,
+    sintese,
+  });
+  const promptApresentacao = gerarPromptApresentacao({
+    nomeProjeto,
+    shortlist: shortlistArr,
+    notas,
+    sintese,
+    relatorioFinal,
+  });
+
+  useEffect(() => {
+    if (!dominiosResultado.length) return;
+    let ativo = true;
+    async function checar() {
+      setChecandoDominios(true);
+      try {
+        const res = await fetch("/api/dominios/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dominios: dominiosResultado }),
+        });
+        const data = (await res.json()) as {
+          sucesso?: boolean;
+          resultados?: ResultadoDominio[];
+        };
+        if (!ativo || !data.sucesso) return;
+        const mapa: Record<string, ResultadoDominio> = {};
+        for (const item of data.resultados ?? []) {
+          mapa[item.dominio] = item;
+        }
+        setDominios((prev) => ({ ...prev, ...mapa }));
+      } finally {
+        if (ativo) setChecandoDominios(false);
+      }
+    }
+    void checar();
+    return () => {
+      ativo = false;
+    };
+  }, [dominiosResultado]);
 
   const toggleFavorito = useCallback(
     async (nome: string) => {
       const novoSet = new Set(favoritos);
+      const novasAvaliacoes = { ...avaliacoes };
       if (novoSet.has(nome)) novoSet.delete(nome);
       else novoSet.add(nome);
+      if (novoSet.has(nome)) {
+        novasAvaliacoes[nome] = { ...(novasAvaliacoes[nome] ?? {}), status: "shortlist" };
+      } else if (novasAvaliacoes[nome]?.status === "shortlist") {
+        novasAvaliacoes[nome] = { ...(novasAvaliacoes[nome] ?? {}), status: "neutro" };
+      }
       setFavoritos(novoSet);
+      setAvaliacoes(novasAvaliacoes);
       setSalvandoFavoritos(true);
       try {
-        await fetch(`/api/projetos/${idProjeto}/favoritos`, {
+        await fetch(`/api/projetos/${idProjeto}/avaliacoes`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nomes: Array.from(novoSet) }),
+          body: JSON.stringify({
+            avaliacoes: novasAvaliacoes,
+            nomesEscolhidos: Array.from(novoSet),
+          }),
         });
       } finally {
         setSalvandoFavoritos(false);
       }
     },
-    [favoritos, idProjeto],
+    [avaliacoes, favoritos, idProjeto],
+  );
+
+  const salvarStatusNome = useCallback(
+    async (nome: string, status: StatusAvaliacaoNome) => {
+      if (!nome) return;
+      const novasAvaliacoes = { ...avaliacoes, [nome]: { ...(avaliacoes[nome] ?? {}), status } };
+      const novoSet = new Set(favoritos);
+      if (status === "shortlist") {
+        novoSet.add(nome);
+      } else {
+        novoSet.delete(nome);
+      }
+      setAvaliacoes(novasAvaliacoes);
+      setFavoritos(novoSet);
+      setSalvandoAvaliacao(true);
+      try {
+        await fetch(`/api/projetos/${idProjeto}/avaliacoes`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            avaliacoes: novasAvaliacoes,
+            nomesEscolhidos: Array.from(novoSet),
+          }),
+        });
+      } finally {
+        setSalvandoAvaliacao(false);
+      }
+    },
+    [avaliacoes, favoritos, idProjeto],
   );
 
   const salvarNota = useCallback(
     async (nome: string, nota: string) => {
       const novasNotas = { ...notas, [nome]: nota };
       if (!nota) delete novasNotas[nome];
+      const novasAvaliacoes = {
+        ...avaliacoes,
+        [nome]: { ...(avaliacoes[nome] ?? { status: "neutro" as const }), nota },
+      };
+      if (!nota && novasAvaliacoes[nome]) {
+        delete novasAvaliacoes[nome].nota;
+      }
       setNotas(novasNotas);
+      setAvaliacoes(novasAvaliacoes);
       setSalvandoNota(true);
       try {
-        await fetch(`/api/projetos/${idProjeto}/notas`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notas: novasNotas }),
-        });
+        await Promise.all([
+          fetch(`/api/projetos/${idProjeto}/notas`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notas: novasNotas }),
+          }),
+          fetch(`/api/projetos/${idProjeto}/avaliacoes`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              avaliacoes: novasAvaliacoes,
+              nomesEscolhidos: Array.from(favoritos),
+            }),
+          }),
+        ]);
       } finally {
         setSalvandoNota(false);
       }
     },
-    [notas, idProjeto],
+    [avaliacoes, favoritos, notas, idProjeto],
   );
 
-  const favoritosArr = propostas.filter((p) => p.nome && favoritos.has(p.nome));
+  const favoritosArr = shortlistArr;
 
   async function gerarVariacoes() {
     if (!nomeSugerido.trim()) return;
@@ -480,14 +860,14 @@ export function ResultadoClient({
           <p className="text-sm text-ili-cinza-400">{nomeProjeto}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {(salvandoFavoritos || salvandoNota) && (
+          {(salvandoFavoritos || salvandoNota || salvandoAvaliacao) && (
             <span className="text-xs text-ili-cinza-400">A guardar…</span>
           )}
           <Link
             href={`/projetos/${idProjeto}/revisao#diretrizes-naming`}
             className="rounded-xl border border-brand-200 bg-ili-rosa-50/80 px-4 py-2 text-sm font-semibold text-brand-800 transition hover:border-brand-400"
           >
-            Gerar novas propostas
+            Refazer rodada com este briefing
           </Link>
           <Link
             href={`/projetos/${idProjeto}/revisao`}
@@ -527,24 +907,155 @@ export function ResultadoClient({
         </section>
       )}
 
-      {/* Favoritos do analista */}
-      {favoritosArr.length > 0 && (
+      {/* Shortlist e validacao */}
+      {propostasVisiveis.length > 0 && (
+        <section className="mb-10 rounded-2xl border border-ili-cinza-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-medium text-ili-preto">Shortlist para validação</h2>
+              <p className="mt-1 text-sm text-ili-cinza-500">
+                Marque os nomes que vão para pré-checagem de INPI, domínios e apresentação. Os negativados ficam como aprendizado para a próxima rodada.
+              </p>
+            </div>
+            <div className="flex gap-2 text-xs font-medium">
+              <span className="rounded-full bg-ili-rosa-50 px-2.5 py-1 text-brand-800">
+                {shortlistArr.length} na shortlist
+              </span>
+              <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-700">
+                {negativadosArr.length} negativados
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-ili-cinza-100 bg-ili-cinza-50/60 p-4">
+              <h3 className="text-sm font-semibold text-ili-preto">Nomes selecionados</h3>
+              {shortlistArr.length ? (
+                <ul className="mt-3 space-y-2 text-sm text-ili-cinza-600">
+                  {shortlistArr.map((p) => (
+                    <li
+                      key={`short-${p.nome}`}
+                      className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2"
+                    >
+                      <div>
+                        <span className="font-medium text-ili-preto">{p.nome}</span>
+                        {notas[p.nome ?? ""] ? (
+                          <span className="ml-2 text-xs text-ili-cinza-400">{notas[p.nome ?? ""]}</span>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void salvarStatusNome(p.nome ?? "", "neutro")}
+                        className="shrink-0 rounded-lg border border-ili-cinza-200 px-2 py-1 text-xs font-medium text-ili-cinza-500 hover:border-brand-200 hover:text-brand-700"
+                      >
+                        Remover
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-ili-cinza-400">Nenhum nome selecionado ainda.</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-red-100 bg-red-50/40 p-4">
+              <h3 className="text-sm font-semibold text-red-800">Nomes negativados</h3>
+              {negativadosArr.length ? (
+                <ul className="mt-3 space-y-2 text-sm text-red-700">
+                  {negativadosArr.map((p) => (
+                    <li key={`neg-${p.nome}`} className="rounded-lg bg-white/80 px-3 py-2">
+                      <span className="font-medium">{p.nome}</span>
+                      {notas[p.nome ?? ""] ? (
+                        <span className="ml-2 text-xs text-red-500">{notas[p.nome ?? ""]}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-red-400">Nenhum nome negativado ainda.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-ili-preto">Prompt INPI para Claude</h3>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(promptInpi)}
+                  disabled={!shortlistArr.length}
+                  className="rounded-lg border border-ili-cinza-200 px-3 py-1 text-xs font-medium text-ili-cinza-500 hover:border-brand-200 hover:text-brand-700 disabled:opacity-50"
+                >
+                  Copiar
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={promptInpi}
+                className="h-56 w-full resize-y rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/50 p-3 text-xs leading-relaxed text-ili-cinza-600 outline-none"
+              />
+            </div>
+
+            <div className="rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/50 p-4">
+              <h3 className="text-sm font-semibold text-ili-preto">Domínios no resultado</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ili-cinza-500">
+                Cada nome abaixo mostra automaticamente .com, .com.br, .net, .org, .co, .io, .ai, .app, .dev e .digital com status de pré-checagem.
+              </p>
+              {checandoDominios ? (
+                <p className="mt-3 text-xs text-ili-cinza-400">Checando domínios via RDAP...</p>
+              ) : (
+                <p className="mt-3 text-xs text-ili-cinza-400">Confirme disponibilidade no registrador antes da decisão final.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-ili-preto">Prompt base da apresentação</h3>
+              <button
+                type="button"
+                onClick={() => void navigator.clipboard.writeText(promptApresentacao)}
+                disabled={!shortlistArr.length}
+                className="rounded-lg border border-ili-cinza-200 px-3 py-1 text-xs font-medium text-ili-cinza-500 hover:border-brand-200 hover:text-brand-700 disabled:opacity-50"
+              >
+                Copiar
+              </button>
+            </div>
+            <textarea
+              readOnly
+              value={promptApresentacao}
+              className="h-52 w-full resize-y rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/50 p-3 text-xs leading-relaxed text-ili-cinza-600 outline-none"
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Shortlist do analista */}
+      {false && favoritosArr.length > 0 && (
         <section className="mb-10">
           <h2 className="mb-3 flex items-center gap-2 text-lg font-medium text-ili-preto">
             <svg className="h-5 w-5 text-brand-500" fill="currentColor" viewBox="0 0 24 24">
               <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
             </svg>
-            Selecionados pelo analista ({favoritosArr.length})
+            Shortlist do analista ({favoritosArr.length})
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {favoritosArr.map((p, i) => (
               <CartaoProposta
                 key={`fav-${p.nome ?? i}`}
                 p={p}
-                idx={propostas.indexOf(p)}
+                idx={propostasVisiveis.indexOf(p)}
                 favorito
+                status={avaliacoes[p.nome ?? ""]?.status ?? "shortlist"}
                 nota={notas[p.nome ?? ""] ?? ""}
+                dominiosNome={dominiosParaNome(p.nome ?? "").map((dom) => ({
+                  dominio: dom,
+                  status: dominios[dom]?.status ?? "indeterminado",
+                  fonte: dominios[dom]?.fonte ?? "rdap",
+                }))}
                 onToggleFavorito={() => void toggleFavorito(p.nome ?? "")}
+                onStatus={(status) => void salvarStatusNome(p.nome ?? "", status)}
                 onNota={(n) => void salvarNota(p.nome ?? "", n)}
               />
             ))}
@@ -552,24 +1063,33 @@ export function ResultadoClient({
         </section>
       )}
 
-      {/* Todas as propostas */}
-      {propostas.length > 0 && (
+      {/* Novas propostas */}
+      {novosArr.length > 0 && (
         <section className="mb-10">
-          <h2 className="mb-2 text-lg font-medium text-ili-preto">Todas as propostas</h2>
+          <h2 className="mb-2 text-lg font-medium text-ili-preto">
+            Novas propostas para avaliar ({novosArr.length})
+          </h2>
           <p className="mb-4 text-sm text-ili-cinza-500">
-            Cada sugestão inclui base conceitual, análise fonética e score de registrabilidade.
-            Clique na estrela para marcar favoritos e em{" "}
+            A lista cresce a cada nova rodada. A IA aprende com shortlist, negativados e notas anteriores,
+            sem apagar as propostas já geradas. Clique na estrela para marcar shortlist e em{" "}
             <strong className="font-medium text-ili-preto">Ver detalhes</strong> para expandir.
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {propostas.map((p, i) => (
+            {novosArr.map((p, i) => (
               <CartaoProposta
                 key={`${p.nome ?? i}-${i}`}
                 p={p}
                 idx={i}
                 favorito={Boolean(p.nome && favoritos.has(p.nome))}
+                status={avaliacoes[p.nome ?? ""]?.status ?? "neutro"}
                 nota={notas[p.nome ?? ""] ?? ""}
+                dominiosNome={dominiosParaNome(p.nome ?? "").map((dom) => ({
+                  dominio: dom,
+                  status: dominios[dom]?.status ?? "indeterminado",
+                  fonte: dominios[dom]?.fonte ?? "rdap",
+                }))}
                 onToggleFavorito={() => void toggleFavorito(p.nome ?? "")}
+                onStatus={(status) => void salvarStatusNome(p.nome ?? "", status)}
                 onNota={(n) => void salvarNota(p.nome ?? "", n)}
               />
             ))}
@@ -657,8 +1177,15 @@ export function ResultadoClient({
                   p={p}
                   idx={i}
                   favorito={Boolean(p.nome && favoritos.has(p.nome))}
+                  status={avaliacoes[p.nome ?? ""]?.status ?? "neutro"}
                   nota={notas[p.nome ?? ""] ?? ""}
+                  dominiosNome={dominiosParaNome(p.nome ?? "").map((dom) => ({
+                    dominio: dom,
+                    status: dominios[dom]?.status ?? "indeterminado",
+                    fonte: dominios[dom]?.fonte ?? "rdap",
+                  }))}
                   onToggleFavorito={() => void toggleFavorito(p.nome ?? "")}
+                  onStatus={(status) => void salvarStatusNome(p.nome ?? "", status)}
                   onNota={(n) => void salvarNota(p.nome ?? "", n)}
                 />
               ))}

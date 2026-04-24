@@ -40,18 +40,29 @@ export default async function ResultadoPage({
     redirect(`/projetos/${params.id}`);
   }
 
-  // notas_nomes é coluna nova — tenta buscar separado para não quebrar se migration não foi rodada
+  // Colunas novas: tenta buscar separado para não quebrar se migration não foi rodada
   let notasNomes: Record<string, string> = {};
+  let avaliacoesNomes: Record<
+    string,
+    { status: "shortlist" | "negativado" | "neutro"; nota?: string }
+  > = {};
   try {
     const { data: extra } = await supabase
       .from("projetos")
-      .select("notas_nomes")
+      .select("notas_nomes, avaliacoes_nomes")
       .eq("id", params.id)
       .eq("created_by", user.id)
       .maybeSingle();
     notasNomes = (extra?.notas_nomes as Record<string, string> | null) ?? {};
+    avaliacoesNomes =
+      (extra?.avaliacoes_nomes as
+        | Record<
+            string,
+            { status: "shortlist" | "negativado" | "neutro"; nota?: string }
+          >
+        | null) ?? {};
   } catch {
-    // coluna ainda não existe — ignora
+    // coluna ainda não existe - ignora
   }
 
   return (
@@ -62,6 +73,7 @@ export default async function ResultadoPage({
       nomesGeral={row.nomes_gerados as Record<string, unknown> | null}
       nomesEscolhidos={(row.nomes_escolhidos as string[] | null) ?? []}
       notasNomes={notasNomes}
+      avaliacoesNomes={avaliacoesNomes}
     />
   );
 }

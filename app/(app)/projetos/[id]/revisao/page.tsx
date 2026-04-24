@@ -22,7 +22,7 @@ export default async function RevisaoPage({
   const { data: row, error } = await supabase
     .from("projetos")
     .select(
-      "briefing, briefing_texto, briefing_validado_em, benchmark_aprovado_em",
+      "briefing, briefing_texto, briefing_validado_em, benchmark_aprovado_em, avaliacoes_nomes, notas_nomes",
     )
     .eq("id", params.id)
     .eq("created_by", user.id)
@@ -46,11 +46,28 @@ export default async function RevisaoPage({
     redirect(`/projetos/${params.id}/benchmark`);
   }
 
+  const avaliacoes =
+    (row.avaliacoes_nomes as
+      | Record<string, { status?: string; nota?: string }>
+      | null) ?? {};
+  const notas = (row.notas_nomes as Record<string, string> | null) ?? {};
+  const aprovados = Object.entries(avaliacoes)
+    .filter(([, v]) => v.status === "shortlist")
+    .map(([nome, v]) => `- ${nome}${v.nota || notas[nome] ? `: ${v.nota || notas[nome]}` : ""}`);
+  const negativados = Object.entries(avaliacoes)
+    .filter(([, v]) => v.status === "negativado")
+    .map(([nome, v]) => `- ${nome}${v.nota || notas[nome] ? `: ${v.nota || notas[nome]}` : ""}`);
+  const aprendizadosRodadaAnterior = [
+    aprovados.length ? `Nomes aprovados/shortlist:\n${aprovados.join("\n")}` : "",
+    negativados.length ? `Nomes negativados:\n${negativados.join("\n")}` : "",
+  ].filter(Boolean).join("\n\n");
+
   return (
     <RevisaoBriefingClient
       idProjeto={params.id}
       initialBriefing={briefingDesdeDb(row.briefing)}
       initialTexto={row.briefing_texto ?? ""}
+      aprendizadosRodadaAnterior={aprendizadosRodadaAnterior}
     />
   );
 }

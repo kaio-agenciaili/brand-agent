@@ -8,6 +8,7 @@ type Body = {
   briefing: BriefingState;
   briefing_texto: string;
   concorrentes_manuais?: string[] | null;
+  feedback_rodada?: string | null;
 };
 
 export async function POST(request: Request) {
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
 
   const { data: project, error: errP } = await supabase
     .from("projetos")
-    .select("id, benchmark")
+    .select("id, benchmark, avaliacoes_nomes, notas_nomes, nomes_gerados")
     .eq("id", projetoId)
     .eq("created_by", user.id)
     .maybeSingle();
@@ -61,9 +62,47 @@ export async function POST(request: Request) {
     const bloco = bench.concorrentes
       .map((c) => `- ${c.nome} (${c.tipo === "indireto" ? "indireto" : "direto"}): ${c.resumo}`)
       .join("\n");
-    textoParaCrew = `${txt}\n\n## Benchmark aprovado\n${bloco}`;
+    const diretos = bench.concorrentes
+      .filter((c) => c.tipo !== "indireto")
+      .map((c) => c.nome)
+      .join(", ");
+    const indiretos = bench.concorrentes
+      .filter((c) => c.tipo === "indireto")
+      .map((c) => c.nome)
+      .join(", ");
+    textoParaCrew = `${txt}\n\n## Benchmark aprovado\n${bloco}\n\n## Leitura obrigatória do benchmark para naming\nUse os nomes dos concorrentes para entender o que o mercado já aceita, mas não copie estruturas, radicais ou clichês. Concorrentes diretos indicam padrões de categoria que precisam ser diferenciados. Concorrentes indiretos indicam códigos de linguagem e expectativa que podem inspirar sem imitar.\nConcorrentes diretos: ${diretos || "não informados"}\nConcorrentes indiretos/referências: ${indiretos || "não informados"}\nAntes de gerar nomes, identifique mentalmente padrões aceitos, clichês saturados e espaços livres.`;
   }
   textoParaCrew += diretrizesNamingParaTextoCrew(body.briefing.step5);
+
+  const avaliacoes =
+    (project.avaliacoes_nomes as
+      | Record<string, { status?: string; nota?: string }>
+      | null) ?? {};
+  const notas = (project.notas_nomes as Record<string, string> | null) ?? {};
+  const nomesGerados = (project.nomes_gerados as Record<string, unknown> | null) ?? null;
+  const namingAnterior = nomesGerados?.naming_json as
+    | { propostas?: Array<{ nome?: string }> }
+    | null
+    | undefined;
+  const nomesAnteriores = (namingAnterior?.propostas ?? [])
+    .map((p) => String(p.nome ?? "").trim())
+    .filter(Boolean);
+  const aprovados = Object.entries(avaliacoes)
+    .filter(([, v]) => v.status === "shortlist")
+    .map(([nome, v]) => `- ${nome}${v.nota || notas[nome] ? `: ${v.nota || notas[nome]}` : ""}`);
+  const negativados = Object.entries(avaliacoes)
+    .filter(([, v]) => v.status === "negativado")
+    .map(([nome, v]) => `- ${nome}${v.nota || notas[nome] ? `: ${v.nota || notas[nome]}` : ""}`);
+  const feedbackRodada = (body.feedback_rodada ?? "").trim();
+  const aprendizados = [
+    nomesAnteriores.length ? `Todos os nomes já gerados neste projeto (não repetir; usar como repertório acumulado):\n${nomesAnteriores.map((n) => `- ${n}`).join("\n")}` : "",
+    aprovados.length ? `Nomes aprovados/shortlist da rodada anterior:\n${aprovados.join("\n")}` : "",
+    negativados.length ? `Nomes negativados da rodada anterior (não repetir nem gerar variações óbvias):\n${negativados.join("\n")}` : "",
+    feedbackRodada ? `Feedback escrito do analista para esta nova rodada:\n${feedbackRodada}` : "",
+  ].filter(Boolean);
+  if (aprendizados.length) {
+    textoParaCrew += `\n\n## Aprendizados e repertório acumulado\n${aprendizados.join("\n\n")}\n\nRegras para a nova rodada: aprenda com os nomes aprovados, evite os padrões dos negativados, não repita nomes anteriores e explique como cada nova proposta responde a esses aprendizados. Gere nomes novos para ampliar a lista acumulada do projeto.`;
+  }
 
   const concor = body.concorrentes_manuais?.length ? body.concorrentes_manuais : null;
   const base = getCrewaiBaseUrl();

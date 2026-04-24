@@ -4,6 +4,55 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type NamingJson = {
+  propostas?: Array<Record<string, unknown> & { nome?: string }>;
+  top3?: Array<Record<string, unknown> & { nome?: string }>;
+  sintese_bases?: string;
+  [key: string]: unknown;
+};
+
+function nomeKey(nome: unknown): string {
+  return String(nome ?? "").trim().toLocaleLowerCase("pt-BR");
+}
+
+function mergeNamingJson(anterior: unknown, novo: unknown): unknown {
+  if (!novo || typeof novo !== "object" || Array.isArray(novo)) {
+    return novo ?? anterior ?? null;
+  }
+  const novoJson = novo as NamingJson;
+  const anteriorJson =
+    anterior && typeof anterior === "object" && !Array.isArray(anterior)
+      ? (anterior as NamingJson)
+      : null;
+  const propostasAnteriores = Array.isArray(anteriorJson?.propostas)
+    ? anteriorJson!.propostas
+    : [];
+  const propostasNovas = Array.isArray(novoJson.propostas) ? novoJson.propostas : [];
+  const byNome = new Map<string, Record<string, unknown> & { nome?: string }>();
+
+  for (const p of propostasAnteriores) {
+    const key = nomeKey(p.nome);
+    if (key) byNome.set(key, { ...p, rodada_origem: p.rodada_origem ?? "anterior" });
+  }
+  for (const p of propostasNovas) {
+    const key = nomeKey(p.nome);
+    if (key) byNome.set(key, { ...p, rodada_origem: "atual" });
+  }
+
+  const propostas = Array.from(byNome.values());
+  const sinteseAnterior = anteriorJson?.sintese_bases ? String(anteriorJson.sintese_bases) : "";
+  const sinteseNova = novoJson.sintese_bases ? String(novoJson.sintese_bases) : "";
+
+  return {
+    ...anteriorJson,
+    ...novoJson,
+    propostas,
+    top3: Array.isArray(novoJson.top3) ? novoJson.top3 : anteriorJson?.top3 ?? [],
+    sintese_bases: [sinteseAnterior, sinteseNova].filter(Boolean).join("\n\n"),
+    total_propostas_acumuladas: propostas.length,
+  };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("job_id");
@@ -22,6 +71,15 @@ export async function GET(request: Request) {
   if (!user) {
     return new Response("Não autenticado.", { status: 401 });
   }
+
+  const { data: projectSnapshot } = await supabase
+    .from("projetos")
+    .select("nomes_gerados")
+    .eq("id", projetoId)
+    .eq("created_by", user.id)
+    .maybeSingle();
+  const nomesGeradosAnteriores =
+    (projectSnapshot?.nomes_gerados as Record<string, unknown> | null) ?? null;
 
   const base = getCrewaiBaseUrl();
   let pythonRes: Response;
@@ -70,17 +128,26 @@ export async function GET(request: Request) {
               if (event.type === "agent_done" && event.agente && event.output) {
                 partialOutputs[event.agente as string] = event.output as string;
                 await supabase.from("projetos").update({
-                  nomes_gerados: { ...partialOutputs } as unknown as Record<string, unknown>,
+                  nomes_gerados: {
+                    ...(nomesGeradosAnteriores ?? {}),
+                    rodada_em_andamento: { ...partialOutputs },
+                  } as unknown as Record<string, unknown>,
                   updated_at: new Date().toISOString(),
                 }).eq("id", projetoId).eq("created_by", user.id);
               }
 
               // Salvar resultado final
               if (event.type === "done") {
+                const namingJsonAcumulado = mergeNamingJson(
+                  nomesGeradosAnteriores?.naming_json,
+                  event.naming_json,
+                );
                 const nomesPayload = {
+                  ...(nomesGeradosAnteriores ?? {}),
                   ...((event.tasks_outputs as Record<string, unknown>) || {}),
-                  naming_json: event.naming_json ?? null,
+                  naming_json: namingJsonAcumulado,
                   fonetica_json: event.fonetica_json ?? null,
+                  ultima_rodada_json: event.naming_json ?? null,
                 };
                 await supabase.from("projetos").update({
                   nomes_gerados: nomesPayload as unknown as Record<string, unknown>,

@@ -10,17 +10,29 @@ export type FoneticaNome = {
   facilidade_escrita?: string;
   alerta_fonetico?: string;
   score_fonetico?: number;
+  score_pronuncia_pt?: number;
+  score_pronuncia_en?: number;
+  score_facilidade_escrita?: number;
+  risco_ouvido?: string;
+  risco_grafia?: string;
 };
 
 export type PropostaNaming = {
   nome?: string;
   categoria?: string;
+  territorio_estrategico?: string;
   etimologia?: string;
   justificativa?: string;
   base_conceitual?: string;
+  por_que_e_diferente_dos_concorrentes?: string;
   dominio_sugerido?: string;
   alerta?: string;
   score_registrabilidade?: number;
+  score_memorabilidade?: number;
+  score_sonoridade?: number;
+  score_originalidade?: number;
+  score_potencial_premium?: number;
+  score_final?: number;
   fonetica?: FoneticaNome;
   /** Análise pós-naming: possível colisão com marca global forte */
   colisao_marca_grande?: boolean;
@@ -33,6 +45,7 @@ export type Top3Item = {
   nome?: string;
   justificativa?: string;
   base_estrategica?: string;
+  defesa_para_apresentacao?: string;
   colisao_marca_grande?: boolean;
   marca_grande_referencia?: string;
   explicacao_colisao?: string;
@@ -42,6 +55,9 @@ export type NamingJson = {
   propostas?: PropostaNaming[];
   top3?: Top3Item[];
   sintese_bases?: string;
+  ranking_final?: Record<string, unknown>;
+  plano_da_rodada?: Record<string, unknown>;
+  processo_criativo?: Record<string, unknown>;
 };
 
 export type FoneticaJson = {

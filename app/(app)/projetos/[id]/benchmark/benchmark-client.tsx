@@ -232,7 +232,8 @@ export function BenchmarkClient({
       <h1 className="mb-2 text-2xl font-semibold text-ili-preto">Benchmark</h1>
       <p className="mb-6 text-sm text-ili-cinza-500">
         A IA sugeriu concorrentes com base no briefing. Revise, edite ou adicione
-        mais — classifique como direto ou indireto e aprove quando estiver alinhado.
+        mais — classifique como direto ou indireto. Esses nomes serão usados para entender
+        o que o mercado aceita, quais padrões evitar e como diferenciar a nova marca.
       </p>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -298,7 +299,7 @@ export function BenchmarkClient({
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-ili-cinza-500">
-                  Tipo
+                  Relação com o projeto
                 </label>
                 <select
                   value={c.tipo}
@@ -312,6 +313,9 @@ export function BenchmarkClient({
                   <option value="direto">Concorrente direto</option>
                   <option value="indireto">Concorrente indireto</option>
                 </select>
+                <p className="mt-1 text-xs text-ili-cinza-400">
+                  Direto compete pela mesma escolha. Indireto inspira códigos, linguagem ou expectativa do mercado.
+                </p>
               </div>
               <div className="flex items-end">
                 <button

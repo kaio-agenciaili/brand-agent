@@ -19,6 +19,7 @@ type Props = {
   idProjeto: string;
   initialBriefing: BriefingState;
   initialTexto: string;
+  aprendizadosRodadaAnterior: string;
 };
 
 function Secao({ titulo, id: idSecao, children }: { titulo: string; id?: string; children: ReactNode }) {
@@ -37,12 +38,18 @@ function concorrentesParaApi(b: BriefingState): string[] {
   return b.step3.concorrentesManual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 }
 
-export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto }: Props) {
+export function RevisaoBriefingClient({
+  idProjeto,
+  initialBriefing,
+  initialTexto,
+  aprendizadosRodadaAnterior,
+}: Props) {
   const router = useRouter();
   const { briefing, setBriefing, textoOriginal, setTextoOriginal } = useBriefingProjeto();
   const [processando, setProcessando] = useState(false);
   const [faseProcesso, setFaseProcesso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [feedbackRodada, setFeedbackRodada] = useState("");
   const [eventosSSE, setEventosSSE] = useState<EventoSSE[]>([]);
   const esRef = useRef<EventSource | null>(null);
 
@@ -96,6 +103,7 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
           briefing: b,
           briefing_texto: textoOriginal || initialTexto,
           concorrentes_manuais: concorrentesParaApi(b),
+          feedback_rodada: feedbackRodada,
         }),
       });
       const startData = (await startRes.json()) as { sucesso?: boolean; job_id?: string; erro?: string };
@@ -176,7 +184,7 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
       <h1 className="mb-2 text-2xl font-semibold text-ili-preto">Revisão completa</h1>
       <p className="mb-6 text-sm text-ili-cinza-500">
         Pode alterar qualquer secção abaixo e voltar a carregar em{" "}
-        <strong className="font-medium text-ili-cinza-600">Confirmar e gerar nomes</strong>{" "}
+        <strong className="font-medium text-ili-cinza-600">Gerar nova rodada</strong>{" "}
         para obter novas propostas (os resultados anteriores serão substituídos quando a nova geração terminar).
       </p>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_3fr] lg:items-start">
@@ -221,6 +229,29 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
               onChange={(p) => setState((s) => ({ ...s, step5: { ...s.step5, ...p } }))}
             />
           </Secao>
+          <Secao titulo="Aprendizados para nova rodada">
+            {aprendizadosRodadaAnterior ? (
+              <div className="mb-3 rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/60 p-3">
+                <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-ili-cinza-500">
+                  {aprendizadosRodadaAnterior}
+                </pre>
+              </div>
+            ) : (
+              <p className="mb-3 text-sm text-ili-cinza-400">
+                Ainda não há shortlist ou nomes negativados salvos da rodada anterior.
+              </p>
+            )}
+            <label className="mb-1 block text-xs font-medium text-ili-cinza-500">
+              Feedback escrito para orientar a próxima geração
+            </label>
+            <textarea
+              value={feedbackRodada}
+              onChange={(e) => setFeedbackRodada(e.target.value)}
+              rows={5}
+              placeholder="Ex.: manter nomes curtos e sonoros; evitar termos muito tech; explorar mais neologismos com sensação humana..."
+              className="w-full rounded-xl border border-ili-cinza-200 bg-ili-cinza-50/40 px-3 py-2.5 text-sm text-ili-preto outline-none placeholder:text-ili-cinza-300 focus:border-brand-300 focus:ring-1 focus:ring-brand-200"
+            />
+          </Secao>
           <div className="space-y-3 pt-2">
             <button
               type="button"
@@ -230,7 +261,7 @@ export function RevisaoBriefingClient({ idProjeto, initialBriefing, initialTexto
             >
               {processando
                 ? faseProcesso || "Agentes a gerar nomes…"
-                : "Confirmar e gerar nomes →"}
+                : "Gerar nova rodada com aprendizados →"}
             </button>
             <p className="text-center text-sm text-ili-cinza-400">
               <Link

@@ -59,6 +59,7 @@ Ajuste `main:app` e a porta se o ponto de entrada do projeto for outro. O fronte
 - `SUPABASE_SERVICE_ROLE_KEY` — só no servidor; nunca expor no cliente  
 - `ANTHROPIC_API_KEY` — se chamadas Anthropic forem feitas a partir do Next (rotas de API)  
 - `CREWAI_SERVER_URL` — base URL do backend Python (ex.: `http://localhost:8000`)
+- `WHOISJSON_API_KEY` — opcional; melhora a checagem de disponibilidade de domínios. Sem ela, o sistema usa RDAP como fallback.
 
 **Python (`python/.env`)**
 
