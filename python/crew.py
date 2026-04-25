@@ -366,13 +366,18 @@ def rodar_crew(
         else f"\nTEXTO BRUTO:\n---\n{briefing_texto}\n---\n"
     )
 
-    # Extrai seção de diretrizes explícitas do analista (sinonimos, negativados, evitar, etc.)
-    # Essa seção é gerada pelo frontend via diretrizesNamingParaTextoCrew e incluída no briefing_texto.
+    # Extrai diretrizes + aprendizados + feedback do analista do briefing_texto.
+    # Captura desde '## Diretrizes explícitas de naming' até o fim do texto,
+    # incluindo '## Aprendizados e repertório acumulado' (onde fica o feedback_rodada).
     import re as _re
-    _dir_match = _re.search(r'(## Diretrizes explícitas de naming[\s\S]*?)(?:\n##|\Z)', briefing_texto)
+    _dir_match = _re.search(r'(## Diretrizes explícitas de naming[\s\S]*)', briefing_texto)
     _dir_txt = _dir_match.group(1).strip() if _dir_match else ""
+    # Se não tiver diretrizes mas tiver aprendizados/feedback, extrai só essa seção
+    if not _dir_txt:
+        _apr_match = _re.search(r'(## Aprendizados[\s\S]*)', briefing_texto)
+        _dir_txt = _apr_match.group(1).strip() if _apr_match else ""
     bloco_diretrizes = (
-        "\n\nDIRETRIZES OBRIGATÓRIAS DO ANALISTA — seguir rigorosamente, prioridade máxima:\n"
+        "\n\nDIRETRIZES E FEEDBACK OBRIGATÓRIOS DO ANALISTA — prioridade máxima, seguir rigorosamente:\n"
         + _dir_txt + "\n\n"
         if _dir_txt
         else ""
