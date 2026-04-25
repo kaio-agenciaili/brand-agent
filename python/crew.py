@@ -466,7 +466,7 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "semantica", "index": 2})
         task = Task(
             description=(
-                + bloco_diretrizes
+                bloco_diretrizes
                 + "Antes de criar nomes, transforma briefing e benchmark num mapa estratégico-semântico. "
                 "Se existem DIRETRIZES OBRIGATÓRIAS DO ANALISTA acima, usa os termos de 'Sinônimos ou termos de que gosta' "
                 "como conceitos-chave prioritários na matriz_sinonimos. "
@@ -510,7 +510,7 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "naming", "index": 2})
         task = Task(
             description=(
-                + bloco_diretrizes
+                bloco_diretrizes
                 + "Gera 16 propostas de nome com bases conceituais explícitas. "
                 "Nunca começa pelos nomes: primeiro usa briefing + benchmark para inferir essência, territórios, mapa semântico, "
                 "padrões aceitos pelo mercado, clichês do setor e espaços livres. "
