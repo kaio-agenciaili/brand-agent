@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     .update({
       nomes_gerados: nomesPayload as unknown as Record<string, unknown>,
       relatorio_final: pr.relatorio_final || "",
-      status: "concluido",
+      status: "gerado",
       updated_at: new Date().toISOString(),
     })
     .eq("id", projetoId)

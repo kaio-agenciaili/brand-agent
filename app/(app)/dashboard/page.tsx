@@ -82,7 +82,7 @@ export default async function DashboardPage() {
       .from("projetos")
       .select("*", { count: "exact", head: true })
       .eq("created_by", userId)
-      .eq("status", "concluido"),
+      .in("status", ["concluido", "gerado"]),
     supabase
       .from("clientes")
       .select("*", { count: "exact", head: true })

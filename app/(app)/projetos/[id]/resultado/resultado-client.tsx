@@ -28,6 +28,7 @@ type ResultadoDominio = {
 type Props = {
   idProjeto: string;
   nomeProjeto: string;
+  statusProjeto: string;
   relatorioFinal: string;
   nomesGeral: Record<string, unknown> | null;
   nomesEscolhidos: string[];
@@ -573,6 +574,7 @@ function CartaoTop3({
 export function ResultadoClient({
   idProjeto,
   nomeProjeto,
+  statusProjeto,
   relatorioFinal,
   nomesGeral,
   nomesEscolhidos: initialFavoritos,
@@ -580,6 +582,19 @@ export function ResultadoClient({
   avaliacoesNomes: initialAvaliacoes,
 }: Props) {
   const [relatorioAberto, setRelatorioAberto] = useState(false);
+  const [status, setStatus] = useState(statusProjeto);
+  const [concluindo, setConcluindo] = useState(false);
+
+  async function concluirProjeto() {
+    setConcluindo(true);
+    try {
+      await fetch(`/api/projetos/${idProjeto}/concluir`, { method: "POST" });
+      setStatus("concluido");
+    } finally {
+      setConcluindo(false);
+    }
+  }
+
   const initialSelecionados = [
     ...initialFavoritos,
     ...Object.entries(initialAvaliacoes)
@@ -856,12 +871,33 @@ export function ResultadoClient({
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-ili-preto">Resultados do naming</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold text-ili-preto">Resultados do naming</h1>
+            {status === "concluido" ? (
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                Concluído
+              </span>
+            ) : (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                Em aberto
+              </span>
+            )}
+          </div>
           <p className="text-sm text-ili-cinza-400">{nomeProjeto}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {(salvandoFavoritos || salvandoNota || salvandoAvaliacao) && (
             <span className="text-xs text-ili-cinza-400">A guardar…</span>
+          )}
+          {status === "gerado" && (
+            <button
+              type="button"
+              onClick={() => void concluirProjeto()}
+              disabled={concluindo}
+              className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:border-emerald-500 hover:bg-emerald-100 disabled:opacity-50"
+            >
+              {concluindo ? "A concluir…" : "Concluir projeto"}
+            </button>
           )}
           <Link
             href={`/projetos/${idProjeto}/revisao#diretrizes-naming`}

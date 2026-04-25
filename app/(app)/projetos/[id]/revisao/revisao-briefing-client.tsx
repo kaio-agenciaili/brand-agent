@@ -138,7 +138,6 @@ export function RevisaoBriefingClient({
           setProcessando(false);
           setFaseProcesso(null);
           router.push(`/projetos/${idProjeto}/resultado`);
-          router.refresh();
         }
 
         if (event.type === "error") {

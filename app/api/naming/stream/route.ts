@@ -118,12 +118,14 @@ export async function GET(request: Request) {
             const eventStr = line.slice(6).trim();
             if (!eventStr) continue;
 
-            // Repassar evento ao browser
-            controller.enqueue(encoder.encode(`data: ${eventStr}\n\n`));
-
+            let event: Record<string, unknown> | null = null;
             try {
-              const event = JSON.parse(eventStr) as Record<string, unknown>;
+              event = JSON.parse(eventStr) as Record<string, unknown>;
+            } catch {
+              // evento não-JSON, ignorar
+            }
 
+            if (event) {
               // Salvar output incremental por agente
               if (event.type === "agent_done" && event.agente && event.output) {
                 partialOutputs[event.agente as string] = event.output as string;
@@ -136,7 +138,8 @@ export async function GET(request: Request) {
                 }).eq("id", projetoId).eq("created_by", user.id);
               }
 
-              // Salvar resultado final
+              // Salvar resultado final ANTES de repassar ao browser
+              // (garante que o DB está atualizado quando o cliente navegar)
               if (event.type === "done") {
                 const namingJsonAcumulado = mergeNamingJson(
                   nomesGeradosAnteriores?.naming_json,
@@ -152,16 +155,17 @@ export async function GET(request: Request) {
                 await supabase.from("projetos").update({
                   nomes_gerados: nomesPayload as unknown as Record<string, unknown>,
                   relatorio_final: (event.relatorio_final as string) || "",
-                  status: "concluido",
+                  status: "gerado",
                   updated_at: new Date().toISOString(),
                 }).eq("id", projetoId).eq("created_by", user.id);
               }
+            }
 
-              if (event.type === "stream_end" || event.type === "error" || event.type === "timeout") {
-                break;
-              }
-            } catch {
-              // evento não-JSON, ignorar
+            // Repassar evento ao browser (depois de salvar no DB para evento "done")
+            controller.enqueue(encoder.encode(`data: ${eventStr}\n\n`));
+
+            if (event?.type === "stream_end" || event?.type === "error" || event?.type === "timeout") {
+              break;
             }
           }
         }

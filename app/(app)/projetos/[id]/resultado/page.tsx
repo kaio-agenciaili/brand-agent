@@ -36,7 +36,10 @@ export default async function ResultadoPage({
   if (!row) {
     notFound();
   }
-  if (row.status !== "concluido") {
+  if (row.status !== "concluido" && row.status !== "gerado") {
+    if (row.status === "em_andamento") {
+      redirect(`/projetos/${params.id}/revisao`);
+    }
     redirect(`/projetos/${params.id}`);
   }
 
@@ -69,6 +72,7 @@ export default async function ResultadoPage({
     <ResultadoClient
       idProjeto={row.id}
       nomeProjeto={row.nome_projeto}
+      statusProjeto={row.status}
       relatorioFinal={row.relatorio_final ?? ""}
       nomesGeral={row.nomes_gerados as Record<string, unknown> | null}
       nomesEscolhidos={(row.nomes_escolhidos as string[] | null) ?? []}

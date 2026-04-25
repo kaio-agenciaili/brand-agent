@@ -38,7 +38,7 @@ export default async function ProjetoInputPage({
     notFound();
   }
 
-  if (row.status === "concluido") {
+  if (row.status === "concluido" || row.status === "gerado") {
     redirect(`/projetos/${params.id}/resultado`);
   }
 
