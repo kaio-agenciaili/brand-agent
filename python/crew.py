@@ -513,7 +513,7 @@ def rodar_crew(
                 f"\nBENCHMARK:\n{benchmark_out[:2200]}"
                 f"\nESTRATÉGIA SEMÂNTICA (régua principal de avaliação):\n{semantica_out[:3500]}"
                 f"\nCOLISÕES COM MARCAS GLOBAIS (usar como critério de corte):\n{colisoes_out[:1500]}"
-                f"\nNOMES GERADOS (16 propostas):\n{naming_out[:7000]}"
+                f"\nNOMES GERADOS (16 propostas):\n{naming_out[:16000]}"
                 "\nCritérios de corte: genericidade, baixa sonoridade, baixa originalidade, distância do briefing, similaridade com concorrentes, colisão confirmada, baixa registrabilidade preliminar e baixo potencial premium."
             ),
             expected_output="JSON final revisado com exatamente 12 propostas fortes e nomes rejeitados explicados.",
@@ -539,7 +539,7 @@ def rodar_crew(
                 '"marca_referencia": "", "gravidade": "nenhuma|baixa|media|alta", '
                 '"explicacao_curta": ""}\n'
                 "]}\n"
-                f"\nOUTPUT DE NAMING (extrai os nomes das propostas):\n{naming_out[:8000]}\n"
+                f"\nOUTPUT DE NAMING (extrai os nomes das propostas):\n{naming_out[:14000]}\n"
             ),
             expected_output="JSON apenas com avaliacoes.",
             agent=agente_col,
