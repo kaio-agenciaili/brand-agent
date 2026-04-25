@@ -366,6 +366,18 @@ def rodar_crew(
         else f"\nTEXTO BRUTO:\n---\n{briefing_texto}\n---\n"
     )
 
+    # Extrai seção de diretrizes explícitas do analista (sinonimos, negativados, evitar, etc.)
+    # Essa seção é gerada pelo frontend via diretrizesNamingParaTextoCrew e incluída no briefing_texto.
+    import re as _re
+    _dir_match = _re.search(r'(## Diretrizes explícitas de naming[\s\S]*?)(?:\n##|\Z)', briefing_texto)
+    _dir_txt = _dir_match.group(1).strip() if _dir_match else ""
+    bloco_diretrizes = (
+        "\n\nDIRETRIZES OBRIGATÓRIAS DO ANALISTA — seguir rigorosamente, prioridade máxima:\n"
+        + _dir_txt + "\n\n"
+        if _dir_txt
+        else ""
+    )
+
     if concorrentes_manuais:
         manuais_txt = "Concorrentes fornecidos: " + ", ".join(concorrentes_manuais)
     elif use_serper:
@@ -454,7 +466,10 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "semantica", "index": 2})
         task = Task(
             description=(
-                "Antes de criar nomes, transforma briefing e benchmark num mapa estratégico-semântico. "
+                + bloco_diretrizes
+                + "Antes de criar nomes, transforma briefing e benchmark num mapa estratégico-semântico. "
+                "Se existem DIRETRIZES OBRIGATÓRIAS DO ANALISTA acima, usa os termos de 'Sinônimos ou termos de que gosta' "
+                "como conceitos-chave prioritários na matriz_sinonimos. "
                 "Não gere nomes. Entrega APENAS JSON válido com:\n"
                 "{\n"
                 '  "essencia_marca": "...",\n'
@@ -495,7 +510,8 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "naming", "index": 2})
         task = Task(
             description=(
-                "Gera 16 propostas de nome com bases conceituais explícitas. "
+                + bloco_diretrizes
+                + "Gera 16 propostas de nome com bases conceituais explícitas. "
                 "Nunca começa pelos nomes: primeiro usa briefing + benchmark para inferir essência, territórios, mapa semântico, "
                 "padrões aceitos pelo mercado, clichês do setor e espaços livres. "
                 "Os nomes dos concorrentes são base para entender linguagem aceita, mas devem ser diferenciados e não imitados.\n"
