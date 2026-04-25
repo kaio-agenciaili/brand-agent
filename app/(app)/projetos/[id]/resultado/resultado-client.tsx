@@ -191,19 +191,31 @@ function ScoreFonetico({ score }: { score?: number }) {
   );
 }
 
-function BadgeCategoria({ categoria }: { categoria?: string }) {
-  if (!categoria) return null;
-  const cores: Record<string, string> = {
-    neologismo: "bg-violet-100 text-violet-700",
-    híbrido: "bg-blue-100 text-blue-700",
-    evocativo: "bg-amber-100 text-amber-700",
-    composto: "bg-emerald-100 text-emerald-700",
-    descritivo: "bg-slate-100 text-slate-600",
-  };
-  const cor = cores[categoria.toLowerCase()] ?? "bg-ili-cinza-100 text-ili-cinza-500";
+const TECNICA_CONFIG: Record<string, { label: string; cor: string }> = {
+  portmanteau: { label: "Fusão", cor: "bg-blue-100 text-blue-700" },
+  neologismo: { label: "Neologismo", cor: "bg-violet-100 text-violet-700" },
+  descritivo: { label: "Descritivo", cor: "bg-slate-100 text-slate-600" },
+  aspiracional: { label: "Aspiracional", cor: "bg-amber-100 text-amber-800" },
+  ressignificado: { label: "Resignificado", cor: "bg-emerald-100 text-emerald-700" },
+  acronimo: { label: "Acrônimo", cor: "bg-cyan-100 text-cyan-700" },
+  fundador: { label: "Fundador", cor: "bg-orange-100 text-orange-700" },
+  fonetico: { label: "Fonético", cor: "bg-pink-100 text-pink-700" },
+};
+
+function BadgeCategoria({ tecnica, categoria }: { tecnica?: string; categoria?: string }) {
+  const key = (tecnica ?? categoria ?? "").toLowerCase();
+  if (!key) return null;
+  const cfg = TECNICA_CONFIG[key];
+  if (cfg) {
+    return (
+      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cfg.cor}`}>
+        {cfg.label}
+      </span>
+    );
+  }
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cor}`}>
-      {categoria}
+    <span className="inline-block rounded-full bg-ili-cinza-100 px-2 py-0.5 text-xs font-medium text-ili-cinza-500">
+      {tecnica ?? categoria}
     </span>
   );
 }
@@ -317,7 +329,7 @@ function CartaoProposta({
                   Negativado
                 </span>
               ) : null}
-              <BadgeCategoria categoria={p.categoria} />
+              <BadgeCategoria tecnica={p.tecnica_naming} categoria={p.categoria} />
               {p.territorio_estrategico ? (
                 <span className="inline-block rounded-full bg-ili-cinza-100 px-2 py-0.5 text-xs font-medium text-ili-cinza-500">
                   {p.territorio_estrategico}
@@ -362,6 +374,11 @@ function CartaoProposta({
             </svg>
           </button>
         </div>
+
+        {/* Fórmula da técnica */}
+        {p.formula_tecnica && (
+          <p className="mt-2 font-mono text-xs text-ili-cinza-500">{p.formula_tecnica}</p>
+        )}
 
         {/* Base conceitual */}
         {p.base_conceitual && (
@@ -613,6 +630,7 @@ export function ResultadoClient({
   const [salvandoFavoritos, setSalvandoFavoritos] = useState(false);
   const [salvandoNota, setSalvandoNota] = useState(false);
   const [salvandoAvaliacao, setSalvandoAvaliacao] = useState(false);
+  const [filtroTecnica, setFiltroTecnica] = useState<string | null>(null);
   const [dominios, setDominios] = useState<Record<string, ResultadoDominio>>({});
   const [checandoDominios, setChecandoDominios] = useState(false);
 
@@ -1110,25 +1128,77 @@ export function ResultadoClient({
             sem apagar as propostas já geradas. Clique na estrela para marcar shortlist e em{" "}
             <strong className="font-medium text-ili-preto">Ver detalhes</strong> para expandir.
           </p>
+
+          {/* Filtro por técnica */}
+          {(() => {
+            const contagens: Record<string, number> = {};
+            for (const p of novosArr) {
+              const key = (p.tecnica_naming ?? p.categoria ?? "").toLowerCase();
+              if (key && TECNICA_CONFIG[key]) {
+                contagens[key] = (contagens[key] ?? 0) + 1;
+              }
+            }
+            const tecnicasPresentes = Object.keys(contagens);
+            if (tecnicasPresentes.length < 2) return null;
+            return (
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFiltroTecnica(null)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                    filtroTecnica === null
+                      ? "border-brand-300 bg-ili-rosa-50 text-brand-800"
+                      : "border-ili-cinza-200 text-ili-cinza-500 hover:border-ili-cinza-300"
+                  }`}
+                >
+                  Todos ({novosArr.length})
+                </button>
+                {tecnicasPresentes.map((key) => {
+                  const cfg = TECNICA_CONFIG[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setFiltroTecnica(filtroTecnica === key ? null : key)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        filtroTecnica === key
+                          ? `${cfg.cor} border-current`
+                          : "border-ili-cinza-200 text-ili-cinza-500 hover:border-ili-cinza-300"
+                      }`}
+                    >
+                      {cfg.label} ({contagens[key]})
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {novosArr.map((p, i) => (
-              <CartaoProposta
-                key={`${p.nome ?? i}-${i}`}
-                p={p}
-                idx={i}
-                favorito={Boolean(p.nome && favoritos.has(p.nome))}
-                status={avaliacoes[p.nome ?? ""]?.status ?? "neutro"}
-                nota={notas[p.nome ?? ""] ?? ""}
-                dominiosNome={dominiosParaNome(p.nome ?? "").map((dom) => ({
-                  dominio: dom,
-                  status: dominios[dom]?.status ?? "indeterminado",
-                  fonte: dominios[dom]?.fonte ?? "rdap",
-                }))}
-                onToggleFavorito={() => void toggleFavorito(p.nome ?? "")}
-                onStatus={(status) => void salvarStatusNome(p.nome ?? "", status)}
-                onNota={(n) => void salvarNota(p.nome ?? "", n)}
-              />
-            ))}
+            {novosArr
+              .filter((p) => {
+                if (!filtroTecnica) return true;
+                const key = (p.tecnica_naming ?? p.categoria ?? "").toLowerCase();
+                return key === filtroTecnica;
+              })
+              .map((p, i) => (
+                <CartaoProposta
+                  key={`${p.nome ?? i}-${i}`}
+                  p={p}
+                  idx={i}
+                  favorito={Boolean(p.nome && favoritos.has(p.nome))}
+                  status={avaliacoes[p.nome ?? ""]?.status ?? "neutro"}
+                  nota={notas[p.nome ?? ""] ?? ""}
+                  dominiosNome={dominiosParaNome(p.nome ?? "").map((dom) => ({
+                    dominio: dom,
+                    status: dominios[dom]?.status ?? "indeterminado",
+                    fonte: dominios[dom]?.fonte ?? "rdap",
+                  }))}
+                  onToggleFavorito={() => void toggleFavorito(p.nome ?? "")}
+                  onStatus={(status) => void salvarStatusNome(p.nome ?? "", status)}
+                  onNota={(n) => void salvarNota(p.nome ?? "", n)}
+                />
+              ))}
           </div>
         </section>
       )}

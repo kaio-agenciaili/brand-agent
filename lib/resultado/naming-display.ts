@@ -19,6 +19,8 @@ export type FoneticaNome = {
 
 export type PropostaNaming = {
   nome?: string;
+  tecnica_naming?: string;
+  formula_tecnica?: string;
   categoria?: string;
   territorio_estrategico?: string;
   etimologia?: string;

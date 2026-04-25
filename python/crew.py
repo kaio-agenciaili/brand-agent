@@ -31,7 +31,9 @@ PROMPTS_DIR = _ROOT / "prompts"
 
 class PropostaNaming(BaseModel):
     nome: str
-    categoria: str = ""
+    tecnica_naming: str = ""  # portmanteau | neologismo | descritivo | aspiracional | ressignificado | acronimo | fundador | fonetico
+    formula_tecnica: str = ""  # "Influence + Lab = InfluLab" / "SIGLA = Significado" / "silabas: ka+lo" / ""
+    categoria: str = ""  # campo legado — igual a tecnica_naming
     territorio_estrategico: str = ""
     etimologia: str = ""
     justificativa: str = ""
@@ -238,67 +240,79 @@ def _merge_colisoes_marcas_grandes(naming_json: dict[str, Any] | None, colisoes_
 # ---------------------------------------------------------------------------
 
 TASK_NAMING_SCHEMA = """
-Método obrigatório antes de entregar:
-1. Interpreta a essência da marca, promessa, público, territórios e tom.
-2. Usa o benchmark para identificar padrões que o mercado aceita, clichês saturados e espaços livres.
-3. Cria mapa semântico interno com metáforas, raízes, sons desejáveis e palavras proibidas.
-4. Gera internamente pelo menos 60 candidatos por categoria: evocativo, neologismo, composto, híbrido, descritivo inteligente, premium e global.
-5. Rejeita candidatos genéricos, óbvios, longos demais, difíceis de falar/escrever, parecidos com concorrentes, compostos preguiçosos, sem relação estratégica, com baixa chance preliminar de registro ou sonoridade fraca.
-6. Para cada candidato finalista, testa mentalmente em: pitch de 30s, app store, cartão de visita, hashtag e domínio falado em voz alta. Só avança com nomes que passam.
-7. Entrega os 16 melhores (o crítico fará o corte final para 12).
+Metodo obrigatorio antes de entregar:
+1. Interpreta a essencia da marca, promessa, publico, territorios e tom.
+2. Usa o benchmark para identificar padroes que o mercado aceita, cliches saturados e espacos livres.
+3. Cria mapa semantico interno com metaforas, raizes, sons desejaveis e palavras proibidas.
+4. Gera internamente pelo menos 80 candidatos distribuidos pelas 8 tecnicas abaixo.
+5. Rejeita candidatos genericos, obvios, longos demais, dificeis de pronunciar, parecidos com concorrentes ou com baixa registrabilidade.
+6. Para cada finalista, testa em: pitch de 30s, app store, cartao de visita, hashtag e dominio falado em voz alta.
+7. Entrega exatamente 24 propostas — o critico nao corta, apenas garante diversidade e qualidade.
 
-Rejeita automaticamente padrões como: Tech Solutions, Prime Group, Max Business, Digital Hub, Smart Pro, Alpha Company, Global Service, Nome + Brasil, Nome + Agency, Nome + Consultoria, Nome + Company.
+AS 8 TECNICAS DE NAMING (minimo 2 propostas por tecnica, total 24):
+- portmanteau: funde 2 palavras/conceitos. Formula: Palavra1 + Palavra2 = Nome. Ex: Influence+Lab=InfluLab, Trend+Space=TrendSpace, Micro+soft=Microsoft
+- neologismo: palavra totalmente inventada com silabas fortes. Silabas uteis: Ka/Lo/Tra/Vox/Nex/Zen/Lum/Via. Ex: Kodak, Spotify, Nexora, Lumify
+- descritivo: diz exatamente o que faz. Formula: Funcao + Beneficio. Ex: PayPal, Booking, Creator Growth, Social Reach
+- aspiracional: evoca poder, futuro, movimento. Ex: Nike, Oracle, Amazon, Atlas, Nova, Horizon, Summit, Titan
+- ressignificado: palavra comum em novo contexto. Ex: Apple, Slack, Uber, Pulse, Signal, Motion, Spark, Shift
+- acronimo: sigla com significado estrategico. Ex: IBM, BMW, HBO, TSM=Trend Social Media, VCG=Viral Creator Group
+- fundador: sobrenome ou nome pessoal para autoridade. Ex: Ford, Dell, Ferrari, Bloomberg
+- fonetico: criado pela fonetica premium. Sons fortes K/X/T/Z/V. Sons premium L/M/N/R/A. Ex: Rolex, Lexus, Zara, Nvidia
 
-Entrega APENAS JSON válido (sem markdown fora do JSON) com:
+Rejeita automaticamente: Tech Solutions, Prime Group, Max Business, Digital Hub, Smart Pro, Alpha Company, Global Service, Nome+Brasil, Nome+Agency, Nome+Consultoria, Nome+Company.
+
+Entrega APENAS JSON valido (sem markdown fora do JSON) com:
 {
   "plano_da_rodada": {
-    "aprendizado_shortlist": ["o que aprendeu com nomes aprovados, se houver"],
-    "aprendizado_negativados": ["o que evitar a partir dos negativados, se houver"],
-    "padroes_a_repetir": ["padrões úteis"],
-    "padroes_a_evitar": ["padrões proibidos"],
-    "nova_hipotese_criativa": "direção testada nesta rodada",
-    "como_esta_rodada_difere_da_anterior": "frase objetiva"
+    "aprendizado_shortlist": [],
+    "aprendizado_negativados": [],
+    "padroes_a_repetir": [],
+    "padroes_a_evitar": [],
+    "nova_hipotese_criativa": "direcao testada nesta rodada",
+    "como_esta_rodada_difere_da_anterior": "frase objetiva",
+    "distribuicao_tecnicas": {"portmanteau": 3, "neologismo": 4, "descritivo": 2, "aspiracional": 3, "ressignificado": 4, "acronimo": 2, "fundador": 2, "fonetico": 4}
   },
   "processo_criativo": {
-    "direcao_escolhida": "direção principal",
-    "categorias_exploradas": ["evocativo", "neologismo", "premium"],
-    "criterios_de_corte": ["critérios usados para rejeitar nomes ruins"],
-    "quantidade_gerada_internamente": 60
+    "direcao_escolhida": "direcao principal",
+    "tecnicas_exploradas": ["portmanteau","neologismo","descritivo","aspiracional","ressignificado","acronimo","fundador","fonetico"],
+    "criterios_de_corte": [],
+    "quantidade_gerada_internamente": 80
   },
-  "propostas": [ exatamente 16 entradas ],
+  "propostas": [ exatamente 24 entradas ],
   "top3": [ exatamente 3 entradas ],
-  "sintese_bases": "parágrafo: como as 12 propostas cobrem posicionamento e territórios",
-  "criterios_usados": ["lista curta dos critérios de seleção"],
-  "padroes_evitados": ["lista curta de clichês ou padrões evitados do benchmark"]
+  "sintese_bases": "paragrafo: como as 24 propostas cobrem posicionamento, territorios e as 8 tecnicas",
+  "criterios_usados": [],
+  "padroes_evitados": []
 }
 
 Cada proposta OBRIGATORIAMENTE:
 - "nome": string
-- "categoria": descritivo_inteligente | neologismo | híbrido | composto | evocativo | premium | global
+- "tecnica_naming": portmanteau | neologismo | descritivo | aspiracional | ressignificado | acronimo | fundador | fonetico
+- "formula_tecnica": portmanteau -> "Palavra1 + Palavra2 = Nome"; acronimo -> "SIGLA = Significado completo"; neologismo -> "silabas: xx+yy+zz"; outros -> ""
+- "categoria": mesmo valor de tecnica_naming (campo de compatibilidade)
 - "territorio_estrategico": string
-- "etimologia": 1 frase — origem semântica
-- "origem_na_matriz": "Conceito A (sinônimo usado) + Conceito B (sinônimo usado)" — ou "neologismo" se não vier de combinação
-- "justificativa": 2–4 frases — por que serve esta marca
-- "base_conceitual": 2–3 frases — LINK EXPLÍCITO com territórios, arquétipos e requisitos do briefing
-- "por_que_e_diferente_dos_concorrentes": 1–2 frases
+- "etimologia": 1 frase sobre origem semantica
+- "origem_na_matriz": "Conceito A (sinonimo) + Conceito B (sinonimo)" ou tecnica usada
+- "justificativa": 2-4 frases sobre por que serve esta marca
+- "base_conceitual": 2-3 frases com LINK EXPLICITO com territorios, arquetipos e briefing
+- "por_que_e_diferente_dos_concorrentes": 1-2 frases
 - "dominio_sugerido": ex: ".com.br", ".io"
-- "alerta": riscos de confusão com marcas existentes (string, pode ser vazio)
-- "score_registrabilidade": inteiro 1–5
-- "score_memorabilidade": inteiro 1–5
-- "score_sonoridade": inteiro 1–5
-- "score_originalidade": inteiro 1–5
-- "score_potencial_premium": inteiro 1–5
-- "score_final": média arredondada dos 5 scores acima: round((registrabilidade + memorabilidade + sonoridade + originalidade + potencial_premium) / 5)
+- "alerta": riscos de confusao com marcas (string, pode ser vazio)
+- "score_registrabilidade": inteiro 1-5
+- "score_memorabilidade": inteiro 1-5
+- "score_sonoridade": inteiro 1-5
+- "score_originalidade": inteiro 1-5
+- "score_potencial_premium": inteiro 1-5
+- "score_final": round((registrabilidade + memorabilidade + sonoridade + originalidade + potencial_premium) / 5)
 
 Cada top3:
-- "nome": igual a uma das 12 (ou afinado)
-- "justificativa": por que está no pódio
-- "base_estrategica": 2–4 frases — como sustenta a estratégia + territórios
-- "defesa_para_apresentacao": como defender este nome para o cliente
+- "nome": igual a uma das 24
+- "justificativa": por que esta no podio
+- "base_estrategica": 2-4 frases sobre como sustenta estrategia + territorios
+- "defesa_para_apresentacao": como defender para o cliente
 
-Mínimo 5 propostas devem ser neologismos ou palavras claramente inventadas.
-SEM base_conceitual por proposta = tarefa incompleta.
-SEM diferenciação explícita vs concorrentes = tarefa incompleta.
+Minimo 6 propostas devem usar combinacao da matriz_sinonimos (tecnica portmanteau ou ressignificado via matriz).
+SEM base_conceitual = tarefa incompleta. SEM diferenciacao vs concorrentes = tarefa incompleta.
 """
 
 TASK_FONETICA_SCHEMA = """
@@ -322,7 +336,7 @@ Entrega APENAS JSON válido com:
     }
   ]
 }
-Inclui TODOS os 12 nomes das propostas. Score 5 = excelente pronúncia + memorabilidade em PT e EN.
+Inclui TODOS os 24 nomes das propostas. Score 5 = excelente pronuncia + memorabilidade em PT e EN.
 """
 
 
@@ -516,24 +530,21 @@ def rodar_crew(
         task = Task(
             description=(
                 bloco_diretrizes
-                + "Gera 16 propostas de nome com bases conceituais explícitas. "
-                "Nunca começa pelos nomes: primeiro usa briefing + benchmark para inferir essência, territórios, mapa semântico, "
-                "padrões aceitos pelo mercado, clichês do setor e espaços livres. "
-                "Os nomes dos concorrentes são base para entender linguagem aceita, mas devem ser diferenciados e não imitados.\n"
-                "TÉCNICA OBRIGATÓRIA — combinação semântica intencional:\n"
-                "1. Lê a matriz_sinonimos da estratégia semântica.\n"
-                "2. Para cada território criativo, combina sistematicamente sinônimos de conceitos diferentes:\n"
-                "   ex: [sinônimos de 'tendência'] × [sinônimos de 'espaço/mercado'] → TrendSpace, WaveHub, PulseArena\n"
-                "3. Testa traduções (EN, FR, ES, LA) como fonte de sonoridade e originalidade.\n"
-                "4. Cada proposta deve indicar qual combinacao da matriz originou o nome.\n"
-                "Minimo 8 das 16 propostas devem usar combinacao da matriz_sinonimos.\n"
+                + "Gera 24 propostas de nome usando as 8 tecnicas de naming (minimo 2 por tecnica). "
+                "Nunca comeca pelos nomes: primeiro usa briefing + benchmark para inferir essencia, territorios, "
+                "padroes aceitos pelo mercado, cliches do setor e espacos livres. "
+                "Usa a matriz_sinonimos para combinacoes intencionais (portmanteau/ressignificado via matriz).\n"
+                "Para portmanteau: combina sistematicamente sinonimos de conceitos diferentes da matriz. "
+                "Ex: [sinonimos de tendencia] x [sinonimos de espaco] -> TrendSpace, WaveHub, PulseArena.\n"
+                "Para neologismo: mistura silabas fortes com boa sonoridade. "
+                "Para fonetico: usa sons K/X/T/Z/V (forcas) e L/M/N/R/A (premium).\n"
                 + bloco_briefing
                 + f"\nBRIEFING ESTRUTURADO:\n{briefing_out[:2000]}\n"
                 + f"\nBENCHMARK (concorrentes, padrões aceitos e clichês):\n{benchmark_out[:3000]}\n"
                 + f"\nESTRATÉGIA SEMÂNTICA (usar como mapa obrigatório):\n{semantica_out[:3500]}\n"
                 + TASK_NAMING_SCHEMA
             ),
-            expected_output="JSON com propostas (16) + top3 + sintese_bases; base_conceitual e origem_na_matriz obrigatórias por proposta.",
+            expected_output="JSON com exatamente 24 propostas (8 tecnicas x 3) + top3 + sintese_bases; tecnica_naming, formula_tecnica e base_conceitual obrigatorias por proposta.",
             agent=agente_naming,
         )
         result = _run_with_retry(Crew(agents=[agente_naming], tasks=[task], process=Process.sequential, verbose=True))
@@ -545,21 +556,21 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "critico", "index": 3})
         task = Task(
             description=(
-                "Recebeste 16 propostas de nome e as colisões com marcas globais já identificadas. "
-                "Tua missão: cortar para exatamente 12 propostas finais fortes. "
-                "Rejeite nomes genéricos, óbvios, parecidos com concorrentes, difíceis de defender, "
-                "compostos preguiçosos, sem relação estratégica ou com colisão de gravidade alta/media. "
-                "Para cada nome rejeitado, cria uma alternativa melhor seguindo o mesmo schema. "
-                "Entregue APENAS JSON válido no mesmo formato de naming, com exatamente 12 propostas finais, top3 atualizado, "
-                "e campos adicionais: `critica_resumo`, `nomes_rejeitados` [{nome, motivo}], `ajustes_feitos`.\n"
+                "Recebeste 24 propostas de nome e as colisoes com marcas globais ja identificadas. "
+                "Tua missao: garantir qualidade e diversidade — NAO cortes o numero (mantem 24). "
+                "Verifica: (1) cada uma das 8 tecnicas tem minimo 2 representantes; (2) nomes genericos, obvios ou colisao grave. "
+                "Para cada problema encontrado, substitui por alternativa melhor com mesma tecnica_naming e mesmo schema completo. "
+                "Entrega APENAS JSON valido no mesmo formato de naming, com exatamente 24 propostas, top3 atualizado, "
+                "e campos: critica_resumo (str), nomes_substituidos [{nome, motivo, substituto}], ajustes_feitos (str), "
+                "diversidade_tecnicas {tecnica: contagem}.\n"
                 f"\nBRIEFING:\n{briefing_out[:1800]}"
                 f"\nBENCHMARK:\n{benchmark_out[:2200]}"
-                f"\nESTRATÉGIA SEMÂNTICA (régua principal de avaliação):\n{semantica_out[:3500]}"
-                f"\nCOLISÕES COM MARCAS GLOBAIS (usar como critério de corte):\n{colisoes_out[:1500]}"
-                f"\nNOMES GERADOS (16 propostas):\n{naming_out[:16000]}"
-                "\nCritérios de corte: genericidade, baixa sonoridade, baixa originalidade, distância do briefing, similaridade com concorrentes, colisão confirmada, baixa registrabilidade preliminar e baixo potencial premium."
+                f"\nESTRATEGIA SEMANTICA:\n{semantica_out[:3500]}"
+                f"\nCOLISOES COM MARCAS GLOBAIS:\n{colisoes_out[:1500]}"
+                f"\nNOMES GERADOS (24 propostas):\n{naming_out[:24000]}"
+                "\nCriterios de substituicao: genericidade, baixa sonoridade, colisao confirmada, tecnica sub-representada, distancia do briefing."
             ),
-            expected_output="JSON final revisado com exatamente 12 propostas fortes e nomes rejeitados explicados.",
+            expected_output="JSON revisado com exatamente 24 propostas, tecnicas diversificadas e top3 atualizado.",
             agent=agente_critico,
         )
         result = _run_with_retry(Crew(agents=[agente_critico], tasks=[task], process=Process.sequential, verbose=True))
@@ -582,7 +593,7 @@ def rodar_crew(
                 '"marca_referencia": "", "gravidade": "nenhuma|baixa|media|alta", '
                 '"explicacao_curta": ""}\n'
                 "]}\n"
-                f"\nOUTPUT DE NAMING (extrai os nomes das propostas):\n{naming_out[:14000]}\n"
+                f"\nOUTPUT DE NAMING (extrai os nomes das propostas):\n{naming_out[:20000]}\n"
             ),
             expected_output="JSON apenas com avaliacoes.",
             agent=agente_col,
@@ -603,7 +614,7 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "validacao", "index": 3})
         task = Task(
             description=(
-                "Avalia preliminarmente TODOS os 12 nomes e aprofunda o top 3. "
+                "Avalia preliminarmente TODOS os 24 nomes e aprofunda o top 3. "
                 "Não dê parecer jurídico. Produz APENAS JSON com:\n"
                 "{\n"
                 '  "avaliacoes": [{"nome": "...", "risco_preliminar": "baixo|medio|alto", "risco_genericidade": "baixo|medio|alto", "queries_inpi": [], "queries_google": [], "motivo": ""}],\n'
@@ -624,7 +635,7 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "fonetica", "index": 4})
         task = Task(
             description=(
-                "Analisa foneticamente TODOS os 12 nomes do passo de naming.\n"
+                "Analisa foneticamente TODOS os 24 nomes do passo de naming.\n"
                 + TASK_FONETICA_SCHEMA
                 + f"\nNOMES GERADOS:\n{naming_out[:6000]}"
             ),
@@ -649,11 +660,11 @@ def rodar_crew(
             description=(
                 "Consolida todos os outputs num Relatório final em Markdown com:\n"
                 "## Resumo executivo\n## Benchmark\n## Nome recomendado (base estratégica + fonética)\n"
-                "## Alternativas (outras 9 com linha de base por nome)\n## Próximos passos\n## Linha de posicionamento\n"
-                "Referencia bases dos nomes de topo e destaca melhores scores fonéticos. Tom profissional, em português.\n"
+                "## Alternativas (outras 21 com linha de base por nome)\n## Proximos passos\n## Linha de posicionamento\n"
+                "Referencia bases dos nomes de topo e destaca melhores scores foneticos. Tom profissional, em portugues.\n"
                 f"\n### BRIEFING:\n{briefing_out[:2000]}"
                 f"\n### BENCHMARK:\n{benchmark_out[:1500]}"
-                f"\n### NAMING (12 propostas + top3):\n{naming_out[:3000]}"
+                f"\n### NAMING (24 propostas + top3):\n{naming_out[:4000]}"
                 f"\n### VALIDAÇÃO:\n{validacao_out[:1500]}"
                 f"\n### FONÉTICA:\n{fonetica_out[:1500]}"
                 f"\n### RANKING FINAL:\n{ranking_out[:2000]}"
@@ -676,16 +687,16 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "ranking", "index": 6})
         task = Task(
             description=(
-                "Consolida os nomes finais e calcula ranking estratégico. Entrega APENAS JSON válido com:\n"
+                "Consolida os 24 nomes finais e calcula ranking estratégico. Entrega APENAS JSON válido com:\n"
                 "{\n"
                 '  "pesos": {"aderencia_briefing": 20, "originalidade": 15, "memorabilidade": 15, "sonoridade": 15, "diferenciacao_competitiva": 15, "registrabilidade_preliminar": 10, "potencial_premium": 10},\n'
-                '  "top12": [{"nome": "...", "score_final": 0, "motivo": "...", "principal_risco": "..."}],\n'
+                '  "todos_nomes": [{"nome": "...", "score_final": 0, "tecnica_naming": "...", "motivo": "...", "principal_risco": "..."}],\n'
                 '  "top3": [{"nome": "...", "posicao": 1, "motivo": "...", "base_estrategica": "...", "defesa_para_apresentacao": "...", "principal_risco": "..."}],\n'
                 '  "recomendacao_final": "..."\n'
                 "}\n"
                 f"\nBRIEFING:\n{briefing_out[:1800]}"
                 f"\nBENCHMARK:\n{benchmark_out[:1800]}"
-                f"\nNOMES REVISADOS:\n{naming_out[:5000]}"
+                f"\nNOMES REVISADOS:\n{naming_out[:8000]}"
                 f"\nVALIDAÇÃO:\n{validacao_out[:1800]}"
                 f"\nFONÉTICA:\n{fonetica_out[:1800]}"
             ),
