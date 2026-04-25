@@ -930,10 +930,13 @@ def sugerir_concorrentes(
     briefing_estruturado: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
-    Usa 1 agente para sugerir 3–5 concorrentes com base no briefing.
+    Usa 1 agente para sugerir 3–10 concorrentes com base no briefing.
     Retorna JSON com campo 'concorrentes': [{nome, tipo, resumo}].
     """
     llm_id = _resolve_llm_id()
+    serper_key = (os.environ.get("SERPER_API_KEY") or "").strip()
+    use_serper = bool(serper_key)
+    tools = [SerperDevTool()] if use_serper else []
 
     context = (
         json.dumps(briefing_estruturado, ensure_ascii=False, indent=2)
@@ -941,22 +944,39 @@ def sugerir_concorrentes(
         else ""
     )
 
+    setor = ""
+    o_que_faz = ""
+    if briefing_estruturado and isinstance(briefing_estruturado, dict):
+        setor = str(briefing_estruturado.get("setor") or "")
+        o_que_faz = str(briefing_estruturado.get("o_que_faz") or "")
+
+    busca_txt = (
+        f'Pesquisa na web: "{setor} empresas concorrentes", "{o_que_faz} marcas", "{setor} startups brasil". '
+        if use_serper and (setor or o_que_faz)
+        else "Sem acesso web — usa conhecimento treinado para identificar players reais do setor. "
+    )
+
     p = _load_prompt("sugerir_concorrentes")
     agente = Agent(
         role=p.get("role", "Especialista em análise de mercado e benchmarking competitivo"),
         goal=p.get("goal", "Identificar concorrentes relevantes com base no briefing da marca."),
         backstory=p.get("backstory", ""),
+        tools=tools,
         llm=llm_id,
         verbose=True,
     )
 
     task = Task(
         description=(
-            "Com base no briefing abaixo, identifica 3 a 5 concorrentes ou marcas de referência "
-            "relevantes para este projeto de naming. Mistura concorrentes diretos (mesmo segmento/solução) "
-            "e indiretos (segmento adjacente ou referência de naming/posicionamento).\n\n"
-            "A classificação direto/indireto é obrigatória: direto compete pela mesma escolha; indireto inspira códigos, linguagem ou expectativa do mercado.\n\n"
-            "Além de listar concorrentes, analisa os NOMES deles para entender o que o mercado aceita e o que a nova marca deve evitar.\n\n"
+            busca_txt
+            + "Identifica entre 3 e 10 concorrentes ou marcas de referência para este projeto de naming.\n\n"
+            "PRIORIDADE: comece pelos concorrentes DIRETOS — empresas que competem pelo mesmo cliente, "
+            "com a mesma solução, no mesmo mercado. Só depois adicione indiretos (segmento adjacente "
+            "ou referência de naming/posicionamento) para completar o mapa.\n\n"
+            "A classificação é obrigatória e deve ser precisa:\n"
+            '- "direto": compete pela mesma escolha de compra do mesmo público\n'
+            '- "indireto": não compete diretamente, mas define códigos, linguagem ou expectativa do mercado\n\n'
+            "Analisa os NOMES dos concorrentes para extrair o que o mercado já aceita e o que a nova marca deve evitar.\n\n"
             "Entrega APENAS JSON válido com:\n"
             "{\n"
             '  "padroes_mercado_aceita": ["padrões de naming percebidos nos concorrentes"],\n'
@@ -978,7 +998,7 @@ def sugerir_concorrentes(
             f"BRIEFING ESTRUTURADO:\n{context[:2000]}\n\n"
             f"TEXTO ORIGINAL:\n{briefing_texto[:1500]}\n"
         ),
-        expected_output="JSON com campo 'concorrentes' contendo 3 a 5 entradas.",
+        expected_output="JSON com campo 'concorrentes' contendo 3 a 10 entradas, priorizando diretos.",
         agent=agente,
     )
 

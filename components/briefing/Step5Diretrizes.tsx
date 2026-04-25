@@ -3,7 +3,6 @@
 import { PilulasGrupo } from "@/components/briefing/PilulasGrupo";
 import type {
   BriefingStep5,
-  ComprimentoPreferido,
   ExtensaoDominio,
   PilulasDiretriz,
   TipoNomePreferido,
@@ -20,13 +19,6 @@ const tipos: { v: TipoNomePreferido; l: string }[] = [
   { v: "evocativo", l: "Evocativo" },
   { v: "combinado", l: "Combinado" },
   { v: "descritivo", l: "Descritivo" },
-];
-
-const compr: { v: ComprimentoPreferido; l: string }[] = [
-  { v: "1", l: "1 sílaba" },
-  { v: "2-3", l: "2–3 sílabas" },
-  { v: "4+", l: "4+ sílabas" },
-  { v: "sem", l: "Sem preferência" },
 ];
 
 const exts: { v: ExtensaoDominio; l: string }[] = [
@@ -93,27 +85,6 @@ export function Step5Diretrizes({ value, onChange }: Props) {
           })}
         </div>
       </div>
-      <div>
-        <p className="mb-2 text-sm font-medium text-ili-cinza-500">Comprimento</p>
-        <div className="flex flex-wrap gap-3">
-          {compr.map((c) => (
-            <label
-              key={c.v}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-ili-cinza-200 bg-white px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-ili-rosa-50"
-            >
-              <input
-                type="radio"
-                name="comprimento"
-                checked={value.comprimento === c.v}
-                onChange={() => onChange({ comprimento: c.v })}
-                className="text-brand-600"
-              />
-              {c.l}
-            </label>
-          ))}
-        </div>
-      </div>
-
       <PilulasGrupo
         titulo="Nomes a negativar"
         ajuda="Pílulas sugeridas pela IA; clique para incluir. Texto livre para mais detalhe."

@@ -242,9 +242,6 @@ export function diretrizesNamingParaTextoCrew(s: BriefingStep5): string {
   if (s.tiposNome?.length) {
     linhas.push(`Tipos de nome preferidos: ${s.tiposNome.join(", ")}`);
   }
-  if (s.comprimento && s.comprimento !== "sem") {
-    linhas.push(`Comprimento (sílabas): ${s.comprimento}`);
-  }
   if (s.extensoes?.length) {
     linhas.push(
       `Extensões de domínio desejadas: ${s.extensoes.map((e) => `.${e}`).join(", ")}`,

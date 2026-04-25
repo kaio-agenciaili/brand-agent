@@ -72,7 +72,7 @@ export function BenchmarkClient({
   }, []);
 
   const preenchidos = benchmark.concorrentes.filter((c) => c.nome.trim());
-  const podeMais = benchmark.concorrentes.length < 5;
+  const podeMais = benchmark.concorrentes.length < 10;
 
   function patchConcorrente(id: string, patch: Partial<BenchmarkConcorrente>) {
     setBenchmark((prev) => ({
@@ -134,8 +134,8 @@ export function BenchmarkClient({
               (e) => e.nome.toLowerCase() === s.nome.toLowerCase(),
             ),
         );
-        const merged = [...existentes, ...novas].slice(0, 5);
-        return { concorrentes: merged.length ? merged : sugestoes.slice(0, 5) };
+        const merged = [...existentes, ...novas].slice(0, 10);
+        return { concorrentes: merged.length ? merged : sugestoes.slice(0, 10) };
       });
     } catch (e) {
       setErro(`Erro ao contactar IA: ${String(e)}`);
@@ -183,8 +183,8 @@ export function BenchmarkClient({
       setErro("Inclua pelo menos um concorrente.");
       return;
     }
-    if (preenchidos.length > 5) {
-      setErro("Máximo de 5 concorrentes.");
+    if (preenchidos.length > 10) {
+      setErro("Máximo de 10 concorrentes.");
       return;
     }
     setGravando(true);
@@ -240,7 +240,7 @@ export function BenchmarkClient({
         <button
           type="button"
           onClick={() => void sugestoesIaConcorrentes()}
-          disabled={iaGlobal || benchmark.concorrentes.length >= 5}
+          disabled={iaGlobal || benchmark.concorrentes.length >= 10}
           className="rounded-xl border border-ili-cinza-200 bg-white px-4 py-2.5 text-sm font-medium text-ili-cinza-600 shadow-sm hover:border-brand-300 hover:text-brand-800 disabled:cursor-wait disabled:opacity-60"
         >
           {iaGlobal ? "A pesquisar…" : "Actualizar sugestões (IA)"}
@@ -251,7 +251,7 @@ export function BenchmarkClient({
           disabled={!podeMais}
           className="rounded-xl border border-dashed border-ili-cinza-300 px-4 py-2.5 text-sm text-ili-cinza-500 hover:border-brand-400 hover:text-brand-800 disabled:opacity-40"
         >
-          + Adicionar linha ({benchmark.concorrentes.length}/5)
+          + Adicionar linha ({benchmark.concorrentes.length}/10)
         </button>
       </div>
 
