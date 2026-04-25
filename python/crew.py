@@ -244,7 +244,8 @@ Método obrigatório antes de entregar:
 3. Cria mapa semântico interno com metáforas, raízes, sons desejáveis e palavras proibidas.
 4. Gera internamente pelo menos 60 candidatos por categoria: evocativo, neologismo, composto, híbrido, descritivo inteligente, premium e global.
 5. Rejeita candidatos genéricos, óbvios, longos demais, difíceis de falar/escrever, parecidos com concorrentes, compostos preguiçosos, sem relação estratégica, com baixa chance preliminar de registro ou sonoridade fraca.
-6. Entrega apenas os 12 melhores.
+6. Para cada candidato finalista, testa mentalmente em: pitch de 30s, app store, cartão de visita, hashtag e domínio falado em voz alta. Só avança com nomes que passam.
+7. Entrega os 16 melhores (o crítico fará o corte final para 12).
 
 Rejeita automaticamente padrões como: Tech Solutions, Prime Group, Max Business, Digital Hub, Smart Pro, Alpha Company, Global Service, Nome + Brasil, Nome + Agency, Nome + Consultoria, Nome + Company.
 
@@ -264,7 +265,7 @@ Entrega APENAS JSON válido (sem markdown fora do JSON) com:
     "criterios_de_corte": ["critérios usados para rejeitar nomes ruins"],
     "quantidade_gerada_internamente": 60
   },
-  "propostas": [ exatamente 12 entradas ],
+  "propostas": [ exatamente 16 entradas ],
   "top3": [ exatamente 3 entradas ],
   "sintese_bases": "parágrafo: como as 12 propostas cobrem posicionamento e territórios",
   "criterios_usados": ["lista curta dos critérios de seleção"],
@@ -286,7 +287,7 @@ Cada proposta OBRIGATORIAMENTE:
 - "score_sonoridade": inteiro 1–5
 - "score_originalidade": inteiro 1–5
 - "score_potencial_premium": inteiro 1–5
-- "score_final": inteiro 1–5
+- "score_final": média arredondada dos 5 scores acima: round((registrabilidade + memorabilidade + sonoridade + originalidade + potencial_premium) / 5)
 
 Cada top3:
 - "nome": igual a uma das 12 (ou afinado)
@@ -294,7 +295,7 @@ Cada top3:
 - "base_estrategica": 2–4 frases — como sustenta a estratégia + territórios
 - "defesa_para_apresentacao": como defender este nome para o cliente
 
-Mínimo 4 propostas devem ser neologismos ou palavras claramente inventadas.
+Mínimo 5 propostas devem ser neologismos ou palavras claramente inventadas.
 SEM base_conceitual por proposta = tarefa incompleta.
 SEM diferenciação explícita vs concorrentes = tarefa incompleta.
 """
@@ -497,22 +498,25 @@ def rodar_crew(
         emit({"type": "agent_done", "agente": "naming", "index": 2, "output": raw})
         return raw
 
-    def _run_critico(briefing_out: str, benchmark_out: str, semantica_out: str, naming_out: str) -> str:
+    def _run_critico(briefing_out: str, benchmark_out: str, semantica_out: str, naming_out: str, colisoes_out: str) -> str:
         emit({"type": "agent_start", "agente": "critico", "index": 3})
         task = Task(
             description=(
-                "Revise rigorosamente os 12 nomes abaixo. Rejeite nomes genéricos, óbvios, parecidos com concorrentes, "
-                "difíceis de defender, compostos preguiçosos ou sem relação estratégica. "
-                "Se um nome for fraco, substitua por uma alternativa melhor seguindo o mesmo schema. "
+                "Recebeste 16 propostas de nome e as colisões com marcas globais já identificadas. "
+                "Tua missão: cortar para exatamente 12 propostas finais fortes. "
+                "Rejeite nomes genéricos, óbvios, parecidos com concorrentes, difíceis de defender, "
+                "compostos preguiçosos, sem relação estratégica ou com colisão de gravidade alta/media. "
+                "Para cada nome rejeitado, cria uma alternativa melhor seguindo o mesmo schema. "
                 "Entregue APENAS JSON válido no mesmo formato de naming, com exatamente 12 propostas finais, top3 atualizado, "
                 "e campos adicionais: `critica_resumo`, `nomes_rejeitados` [{nome, motivo}], `ajustes_feitos`.\n"
                 f"\nBRIEFING:\n{briefing_out[:1800]}"
                 f"\nBENCHMARK:\n{benchmark_out[:2200]}"
-                f"\nESTRATÉGIA SEMÂNTICA:\n{semantica_out[:2200]}"
-                f"\nNOMES GERADOS:\n{naming_out[:7000]}"
-                "\nCritérios de corte: genericidade, baixa sonoridade, baixa originalidade, distância do briefing, similaridade com concorrentes, baixa registrabilidade preliminar e baixo potencial premium."
+                f"\nESTRATÉGIA SEMÂNTICA (régua principal de avaliação):\n{semantica_out[:3500]}"
+                f"\nCOLISÕES COM MARCAS GLOBAIS (usar como critério de corte):\n{colisoes_out[:1500]}"
+                f"\nNOMES GERADOS (16 propostas):\n{naming_out[:7000]}"
+                "\nCritérios de corte: genericidade, baixa sonoridade, baixa originalidade, distância do briefing, similaridade com concorrentes, colisão confirmada, baixa registrabilidade preliminar e baixo potencial premium."
             ),
-            expected_output="JSON final revisado com 12 propostas fortes e nomes rejeitados explicados.",
+            expected_output="JSON final revisado com exatamente 12 propostas fortes e nomes rejeitados explicados.",
             agent=agente_critico,
         )
         result = _run_with_retry(Crew(agents=[agente_critico], tasks=[task], process=Process.sequential, verbose=True))
@@ -579,7 +583,7 @@ def rodar_crew(
             description=(
                 "Analisa foneticamente TODOS os 12 nomes do passo de naming.\n"
                 + TASK_FONETICA_SCHEMA
-                + f"\nNOMES GERADOS:\n{naming_out[:3000]}"
+                + f"\nNOMES GERADOS:\n{naming_out[:6000]}"
             ),
             expected_output="JSON com campo 'analise' contendo um objeto por nome proposto.",
             agent=agente_fonetica,
@@ -663,8 +667,8 @@ def rodar_crew(
     benchmark_out = _run_benchmark(briefing_out)
     semantica_out = _run_semantica(briefing_out, benchmark_out)
     naming_out_bruto = _run_naming(briefing_out, benchmark_out, semantica_out)
-    naming_out = _run_critico(briefing_out, benchmark_out, semantica_out, naming_out_bruto)
-    colisoes_out = _run_colisoes_marcas(naming_out)
+    colisoes_out = _run_colisoes_marcas(naming_out_bruto)
+    naming_out = _run_critico(briefing_out, benchmark_out, semantica_out, naming_out_bruto, colisoes_out)
 
     # Fase 2: validação + fonética em PARALELO
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -736,6 +740,7 @@ def refinar_nomes(
     instrucoes: str,
     briefing_estruturado: dict[str, Any],
     briefing_texto: str,
+    nomes_negativados: list[str] | None = None,
     progress_callback: Callable[[dict], None] | None = None,
 ) -> dict[str, Any]:
     """
@@ -762,14 +767,21 @@ def refinar_nomes(
 
     j_briefing = json.dumps(briefing_estruturado, ensure_ascii=False, indent=2)
 
+    negativados_txt = (
+        f"NOMES NEGATIVADOS (territórios e padrões a EVITAR nas variações): {', '.join(nomes_negativados)}\n\n"
+        if nomes_negativados
+        else ""
+    )
+
     task = Task(
         description=(
             f"O analista selecionou os seguintes nomes para refinamento: {', '.join(nomes_selecionados)}\n\n"
             f"Instruções do analista: {instrucoes}\n\n"
-            f"BRIEFING DO PROJETO:\n{j_briefing[:3000]}\n\n"
+            + negativados_txt
+            + f"BRIEFING DO PROJETO:\n{j_briefing[:3000]}\n\n"
             f"TEXTO ORIGINAL:\n{briefing_texto[:1500]}\n\n"
             "Antes de listar variações, produza `plano_da_rodada` com: aprendizado dos nomes selecionados, "
-            "padrões a repetir, padrões a evitar, hipótese criativa e como esta iteração difere da anterior.\n\n"
+            "padrões a repetir, padrões a evitar (incluindo territórios dos negativados), hipótese criativa e como esta iteração difere da anterior.\n\n"
             "Gera 6 a 9 variações dos nomes selecionados. Para cada variação entrega:\n"
             "- nome: string\n"
             "- nome_origem: qual dos nomes selecionados serviu de base\n"
@@ -929,14 +941,11 @@ def sugerir_concorrentes(
         else ""
     )
 
+    p = _load_prompt("sugerir_concorrentes")
     agente = Agent(
-        role="Especialista em análise de mercado e benchmarking competitivo",
-        goal="Identificar concorrentes relevantes com base no briefing da marca.",
-        backstory=(
-            "Tens profundo conhecimento de mercados e naming de marcas. "
-            "Analisas briefings e identificas os principais players e referências do mercado "
-            "que servem de benchmark competitivo para o projeto de naming."
-        ),
+        role=p.get("role", "Especialista em análise de mercado e benchmarking competitivo"),
+        goal=p.get("goal", "Identificar concorrentes relevantes com base no briefing da marca."),
+        backstory=p.get("backstory", ""),
         llm=llm_id,
         verbose=True,
     )
@@ -999,13 +1008,11 @@ def analisar_concorrente(
     )
     tipo_label = "concorrente direto (mesmo segmento e público)" if tipo == "direto" else "concorrente indireto (segmento adjacente ou referência de naming)"
 
+    p = _load_prompt("analisar_concorrente")
     agente = Agent(
-        role="Especialista em análise de naming e posicionamento de marca",
-        goal="Analisar um concorrente em profundidade para apoiar um projeto de naming.",
-        backstory=(
-            "Tens vasta experiência em benchmarking de marcas e naming estratégico. "
-            "Analisas concorrentes do ponto de vista de posicionamento, tom de voz e impacto no naming."
-        ),
+        role=p.get("role", "Especialista em análise de naming e posicionamento de marca"),
+        goal=p.get("goal", "Analisar um concorrente em profundidade para apoiar um projeto de naming."),
+        backstory=p.get("backstory", ""),
         llm=llm_id,
         verbose=True,
     )
