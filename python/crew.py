@@ -277,6 +277,7 @@ Cada proposta OBRIGATORIAMENTE:
 - "categoria": descritivo_inteligente | neologismo | híbrido | composto | evocativo | premium | global
 - "territorio_estrategico": string
 - "etimologia": 1 frase — origem semântica
+- "origem_na_matriz": "Conceito A (sinônimo usado) + Conceito B (sinônimo usado)" — ou "neologismo" se não vier de combinação
 - "justificativa": 2–4 frases — por que serve esta marca
 - "base_conceitual": 2–3 frases — LINK EXPLÍCITO com territórios, arquétipos e requisitos do briefing
 - "por_que_e_diferente_dos_concorrentes": 1–2 frases
@@ -461,9 +462,23 @@ def rodar_crew(
                 '  "promessa_verbal": "...",\n'
                 '  "territorios_criativos": [{"nome": "...", "ideia": "...", "por_que_importa": "...", "riscos": "..."}],\n'
                 '  "mapa_semantico": {"campos": [], "metaforas": [], "verbos": [], "raizes_possiveis": [], "sons_desejados": [], "palavras_evitar": []},\n'
+                '  "matriz_sinonimos": {\n'
+                '    "instrucao": "Para cada conceito-chave da marca, lista 6-10 sinônimos e traduções em PT, EN, FR, ES, LA",\n'
+                '    "conceitos": [\n'
+                '      {\n'
+                '        "conceito": "nome do conceito (ex: influência, tendência, conexão)",\n'
+                '        "por_que_importa": "por que este conceito é central para a marca",\n'
+                '        "sinonimos_pt": ["palavra1", "palavra2"],\n'
+                '        "sinonimos_en": ["word1", "word2"],\n'
+                '        "sinonimos_outros": ["mot1 (FR)", "palabra1 (ES)", "radix1 (LA)"],\n'
+                '        "combinacoes_sugeridas": ["ConceptoA + SinonimoB = NomePossivel"]\n'
+                '      }\n'
+                '    ]\n'
+                '  },\n'
                 '  "codigos_do_mercado": {"padroes_aceitos": [], "padroes_saturados": [], "oportunidades_de_contraste": []},\n'
                 '  "criterios_de_naming": []\n'
                 "}\n"
+                "A matriz_sinonimos é OBRIGATÓRIA: lista no mínimo 3 conceitos-chave, cada um com 6+ sinônimos e pelo menos 3 combinacoes_sugeridas.\n"
                 + bloco_briefing
                 + f"\nBRIEFING ESTRUTURADO:\n{briefing_out[:2500]}\n"
                 + f"\nBENCHMARK:\n{benchmark_out[:3000]}\n"
@@ -480,17 +495,24 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "naming", "index": 2})
         task = Task(
             description=(
-                "Gera 12 propostas de nome com bases conceituais explícitas. "
+                "Gera 16 propostas de nome com bases conceituais explícitas. "
                 "Nunca começa pelos nomes: primeiro usa briefing + benchmark para inferir essência, territórios, mapa semântico, "
                 "padrões aceitos pelo mercado, clichês do setor e espaços livres. "
                 "Os nomes dos concorrentes são base para entender linguagem aceita, mas devem ser diferenciados e não imitados.\n"
+                "TÉCNICA OBRIGATÓRIA — combinação semântica intencional:\n"
+                "1. Lê a matriz_sinonimos da estratégia semântica.\n"
+                "2. Para cada território criativo, combina sistematicamente sinônimos de conceitos diferentes:\n"
+                "   ex: [sinônimos de 'tendência'] × [sinônimos de 'espaço/mercado'] → TrendSpace, WaveHub, PulseArena\n"
+                "3. Testa traduções (EN, FR, ES, LA) como fonte de sonoridade e originalidade.\n"
+                "4. Cada proposta deve indicar qual combinacao da matriz originou o nome.\n"
+                "Minimo 8 das 16 propostas devem usar combinacao da matriz_sinonimos.\n"
                 + bloco_briefing
                 + f"\nBRIEFING ESTRUTURADO:\n{briefing_out[:2000]}\n"
                 + f"\nBENCHMARK (concorrentes, padrões aceitos e clichês):\n{benchmark_out[:3000]}\n"
                 + f"\nESTRATÉGIA SEMÂNTICA (usar como mapa obrigatório):\n{semantica_out[:3500]}\n"
                 + TASK_NAMING_SCHEMA
             ),
-            expected_output="JSON com propostas (12) + top3 + sintese_bases; base_conceitual obrigatória por proposta.",
+            expected_output="JSON com propostas (16) + top3 + sintese_bases; base_conceitual e origem_na_matriz obrigatórias por proposta.",
             agent=agente_naming,
         )
         result = _run_with_retry(Crew(agents=[agente_naming], tasks=[task], process=Process.sequential, verbose=True))
