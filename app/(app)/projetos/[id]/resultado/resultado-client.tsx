@@ -676,6 +676,19 @@ export function ResultadoClient({
         });
       }
     }
+    // Garante que negativados também aparecem mesmo que não estejam nas propostas mescladas
+    for (const [nome, avaliacao] of Object.entries(avaliacoes)) {
+      if (avaliacao.status === "negativado" && nome.trim()) {
+        const key = nome.toLocaleLowerCase("pt-BR");
+        if (!byNome.has(key)) {
+          byNome.set(key, {
+            nome,
+            categoria: "negativado",
+            base_conceitual: "Nome negativado da rodada anterior.",
+          });
+        }
+      }
+    }
     return Array.from(byNome.values());
   }, [propostasKey, favoritosKey, avaliacoesKey]);
 

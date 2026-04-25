@@ -313,6 +313,17 @@ Cada top3:
 
 Minimo 6 propostas devem usar combinacao da matriz_sinonimos (tecnica portmanteau ou ressignificado via matriz).
 SEM base_conceitual = tarefa incompleta. SEM diferenciacao vs concorrentes = tarefa incompleta.
+
+OVERRIDE QUANDO HOUVER DIRETRIZES DO ANALISTA (bloco DIRETRIZES/APRENDIZADOS no topo):
+- Se o analista especificou palavras, termos ou combinacoes preferidas: usa esses termos como materia-prima principal.
+  Ex: "gosto de Tech, Go, Infinite" -> gera TechGo, GoInfinite, InfiNex, TechVault, etc.
+- A distribuicao minima por tecnica e FLEXIVEL quando ha direcao clara do analista.
+  Concentra nas tecnicas que melhor servem ao feedback (portmanteau com as palavras indicadas,
+  neologismo com as silabas, fonetico com os sons). Nao ha trava de "minimo 2 por tecnica".
+- Para cada nome na shortlist aprovada: gera pelo menos 2 variacoes/extensoes proximas
+  (mesma tecnica, campo semantico adjacente, combinacao com outro sinonimo da matriz).
+  Ex: shortlist "TrendSpace" -> gera "TrendHub", "TrendFlow", "WaveSpace", "PulseArena".
+- Nomes negativados = territorios a evitar, mas aprende o padrao para explorar o oposto.
 """
 
 TASK_FONETICA_SCHEMA = """

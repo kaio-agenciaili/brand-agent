@@ -96,9 +96,9 @@ export async function POST(request: Request) {
   const feedbackRodada = (body.feedback_rodada ?? "").trim();
   const aprendizados = [
     nomesAnteriores.length ? `Todos os nomes já gerados neste projeto (não repetir; usar como repertório acumulado):\n${nomesAnteriores.map((n) => `- ${n}`).join("\n")}` : "",
-    aprovados.length ? `Nomes aprovados/shortlist da rodada anterior:\n${aprovados.join("\n")}` : "",
-    negativados.length ? `Nomes negativados da rodada anterior (não repetir nem gerar variações óbvias):\n${negativados.join("\n")}` : "",
-    feedbackRodada ? `Feedback escrito do analista para esta nova rodada:\n${feedbackRodada}` : "",
+    aprovados.length ? `Nomes aprovados/shortlist — BASE PARA VARIAÇÕES OBRIGATÓRIAS:\n${aprovados.join("\n")}\nPara cada nome aprovado, gera pelo menos 2 variações próximas (mesma técnica, campo semântico adjacente ou nova combinação da matriz). Os aprovados mostram o que o analista gosta — amplia esse território.` : "",
+    negativados.length ? `Nomes negativados (território a evitar; aprende o padrão para explorar o oposto):\n${negativados.join("\n")}` : "",
+    feedbackRodada ? `FEEDBACK DO ANALISTA — prioridade máxima, sobrepõe distribuição de técnicas:\n${feedbackRodada}` : "",
   ].filter(Boolean);
   if (aprendizados.length) {
     textoParaCrew += `\n\n## Aprendizados e repertório acumulado\n${aprendizados.join("\n\n")}\n\nRegras para a nova rodada: aprenda com os nomes aprovados, evite os padrões dos negativados, não repita nomes anteriores e explique como cada nova proposta responde a esses aprendizados. Gere nomes novos para ampliar a lista acumulada do projeto.`;
