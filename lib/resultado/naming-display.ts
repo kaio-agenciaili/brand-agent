@@ -27,6 +27,10 @@ export type PropostaNaming = {
   justificativa?: string;
   base_conceitual?: string;
   por_que_e_diferente_dos_concorrentes?: string;
+  conexao_com_direcao_analista?: string;
+  benchmark_aprendido?: string;
+  risco_genericidade?: string;
+  risco_registro?: string;
   dominio_sugerido?: string;
   alerta?: string;
   score_registrabilidade?: number;

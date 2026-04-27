@@ -59,9 +59,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (concorrentes.length > 5) {
+  if (concorrentes.length > 10) {
     return NextResponse.json(
-      { sucesso: false, erro: "Máximo de 5 concorrentes." },
+      { sucesso: false, erro: "Máximo de 10 concorrentes." },
       { status: 400 },
     );
   }

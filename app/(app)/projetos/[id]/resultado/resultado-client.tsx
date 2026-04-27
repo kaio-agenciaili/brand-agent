@@ -304,6 +304,7 @@ function CartaoProposta({
 
   return (
     <div
+      id={p.nome ? `card-${p.nome.toLowerCase().replace(/\s+/g, "-")}` : undefined}
       className={`rounded-2xl border bg-white shadow-sm transition-all duration-200 ${
         status === "shortlist"
           ? "border-brand-300 ring-1 ring-brand-200"
@@ -315,10 +316,10 @@ function CartaoProposta({
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setExpandido((o) => !o)}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-ili-cinza-300">{idx + 1}</span>
-              <h3 className="text-lg font-semibold text-ili-preto">{p.nome ?? "—"}</h3>
+              <h3 className="text-lg font-semibold text-ili-preto hover:text-brand-700">{p.nome ?? "—"}</h3>
               {status === "shortlist" ? (
                 <span className="inline-block rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">
                   Selecionado
@@ -430,6 +431,7 @@ function CartaoProposta({
         {/* Expandir / Recolher */}
         <button
           type="button"
+          data-expand="true"
           onClick={() => setExpandido((o) => !o)}
           className="mt-3 text-xs font-medium text-brand-600 hover:text-brand-800"
         >
@@ -1005,7 +1007,16 @@ export function ResultadoClient({
                       className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2"
                     >
                       <div>
-                        <span className="font-medium text-ili-preto">{p.nome}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const id = `card-${(p.nome ?? "").toLowerCase().replace(/\s+/g, "-")}`;
+                            document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }}
+                          className="font-medium text-ili-preto hover:text-brand-700 hover:underline underline-offset-2"
+                        >
+                          {p.nome}
+                        </button>
                         {notas[p.nome ?? ""] ? (
                           <span className="ml-2 text-xs text-ili-cinza-400">{notas[p.nome ?? ""]}</span>
                         ) : null}
@@ -1099,7 +1110,7 @@ export function ResultadoClient({
       )}
 
       {/* Shortlist do analista */}
-      {false && favoritosArr.length > 0 && (
+      {favoritosArr.length > 0 && (
         <section className="mb-10">
           <h2 className="mb-3 flex items-center gap-2 text-lg font-medium text-ili-preto">
             <svg className="h-5 w-5 text-brand-500" fill="currentColor" viewBox="0 0 24 24">

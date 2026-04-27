@@ -247,6 +247,7 @@ async def refinar(request: RefinarRequest) -> dict:
             request.instrucoes,
             request.briefing_estruturado,
             request.briefing_texto,
+            None,
             callback,
         )
         return {"sucesso": True, **resultado}

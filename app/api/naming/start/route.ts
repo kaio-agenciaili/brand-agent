@@ -97,11 +97,11 @@ export async function POST(request: Request) {
   const aprendizados = [
     nomesAnteriores.length ? `Todos os nomes já gerados neste projeto (não repetir; usar como repertório acumulado):\n${nomesAnteriores.map((n) => `- ${n}`).join("\n")}` : "",
     aprovados.length ? `Nomes aprovados/shortlist — BASE PARA VARIAÇÕES OBRIGATÓRIAS:\n${aprovados.join("\n")}\nPara cada nome aprovado, gera pelo menos 2 variações próximas (mesma técnica, campo semântico adjacente ou nova combinação da matriz). Os aprovados mostram o que o analista gosta — amplia esse território.` : "",
-    negativados.length ? `Nomes negativados (território a evitar; aprende o padrão para explorar o oposto):\n${negativados.join("\n")}` : "",
+    negativados.length ? `Nomes negativados (aprende a estrutura rejeitada, não proíba automaticamente todos os termos contidos neles):\n${negativados.join("\n")}` : "",
     feedbackRodada ? `FEEDBACK DO ANALISTA — prioridade máxima, sobrepõe distribuição de técnicas:\n${feedbackRodada}` : "",
   ].filter(Boolean);
   if (aprendizados.length) {
-    textoParaCrew += `\n\n## Aprendizados e repertório acumulado\n${aprendizados.join("\n\n")}\n\nRegras para a nova rodada: aprenda com os nomes aprovados, evite os padrões dos negativados, não repita nomes anteriores e explique como cada nova proposta responde a esses aprendizados. Gere nomes novos para ampliar a lista acumulada do projeto.`;
+    textoParaCrew += `\n\n## Aprendizados e repertório acumulado\n${aprendizados.join("\n\n")}\n\nRegras para a nova rodada: a direção criativa do analista tem prioridade alta. Aprenda com os nomes aprovados, entenda as estruturas rejeitadas nos negativados, não repita nomes anteriores e explique como cada nova proposta responde a esses aprendizados. Se um termo aparece em negativado mas também foi pedido pelo analista, preserve o termo e mude a estrutura. Gere nomes novos para ampliar a lista acumulada do projeto.`;
   }
 
   const concor = body.concorrentes_manuais?.length ? body.concorrentes_manuais : null;

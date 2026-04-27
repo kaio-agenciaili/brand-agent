@@ -39,6 +39,10 @@ class PropostaNaming(BaseModel):
     justificativa: str = ""
     base_conceitual: str = ""
     por_que_e_diferente_dos_concorrentes: str = ""
+    conexao_com_direcao_analista: str = ""
+    benchmark_aprendido: str = ""
+    risco_genericidade: str = ""
+    risco_registro: str = ""
     dominio_sugerido: str = ".com.br"
     alerta: str = ""
     score_registrabilidade: int = Field(default=3, ge=1, le=5)
@@ -315,15 +319,31 @@ Minimo 6 propostas devem usar combinacao da matriz_sinonimos (tecnica portmantea
 SEM base_conceitual = tarefa incompleta. SEM diferenciacao vs concorrentes = tarefa incompleta.
 
 OVERRIDE QUANDO HOUVER DIRETRIZES DO ANALISTA (bloco DIRETRIZES/APRENDIZADOS no topo):
-- Se o analista especificou palavras, termos ou combinacoes preferidas: usa esses termos como materia-prima principal.
-  Ex: "gosto de Tech, Go, Infinite" -> gera TechGo, GoInfinite, InfiNex, TechVault, etc.
+- Se o analista especificou palavras, termos ou combinacoes preferidas: usa esses termos como
+  materia-prima PRINCIPAL em pelo menos 16 das 24 propostas.
+  Ex: "gosto de Tech, Go, Cache, flow" -> gera GoFlow, TechCache, CacheLab, OnFire, FireGo,
+  IntFlow, FloatOn, LabFire, GoInt, CacheOn, TechOn, FireCache, etc.
+  Combina sistematicamente as palavras indicadas entre si e com sinonimos da marca.
 - A distribuicao minima por tecnica e FLEXIVEL quando ha direcao clara do analista.
   Concentra nas tecnicas que melhor servem ao feedback (portmanteau com as palavras indicadas,
   neologismo com as silabas, fonetico com os sons). Nao ha trava de "minimo 2 por tecnica".
 - Para cada nome na shortlist aprovada: gera pelo menos 2 variacoes/extensoes proximas
   (mesma tecnica, campo semantico adjacente, combinacao com outro sinonimo da matriz).
   Ex: shortlist "TrendSpace" -> gera "TrendHub", "TrendFlow", "WaveSpace", "PulseArena".
-- Nomes negativados = territorios a evitar, mas aprende o padrao para explorar o oposto.
+- Para cada nome NEGATIVADO: identifica o RADICAL e o PADRAO do nome negativado e REJEITA
+  qualquer nome com esse radical, prefixo, sufixo ou estrutura similar.
+  Ex: negativado "InnovBridge" -> radical "Innov" -> rejeitar Innova*, Innove*, InnovX*,
+  InnovaWave, InnovaGrid, InnovaHub, etc. Explorar o oposto: simplicidade, concretude, etc.
+- Nomes que violam negativados ou ignoram as palavras preferidas = tarefa incompleta.
+
+AJUSTE DE PRIORIDADE CRIATIVA:
+- As regras anti-generico acima sao sinais de risco, nao bloqueios absolutos. Nao censure cedo.
+- Benchmark e cliches do mercado sao referencia de aprendizado, nao prioridade acima do briefing ou do analista.
+- Se houver conflito entre benchmark e direcao criativa do analista, siga a direcao do analista e explique o risco.
+- Termos como Tech, Lab, Digital, AI, Flow, Go, On, Fire, Cache, Int ou Float nao sao proibidos se o analista demonstrar gosto por eles. Use como materia-prima, raiz, inspiracao ou ressignificacao.
+- As 8 tecnicas sao repertorio criativo, nao grade obrigatoria. Nao force sigla, fundador ou descritivo se nao fizer sentido.
+- Negativados ensinam padroes rejeitados, nao proíbem automaticamente todos os radicais contidos neles. Se um termo aparece em negativado mas tambem foi pedido pelo analista, preserve o termo e mude a estrutura.
+- Para cada proposta, marque risco_genericidade e risco_registro quando relevante, mas nao elimine automaticamente nomes simples que tenham clareza comercial ou potencial de curadoria.
 """
 
 TASK_FONETICA_SCHEMA = """
@@ -567,21 +587,28 @@ def rodar_crew(
         emit({"type": "agent_start", "agente": "critico", "index": 3})
         task = Task(
             description=(
-                "Recebeste 24 propostas de nome e as colisoes com marcas globais ja identificadas. "
-                "Tua missao: garantir qualidade e diversidade — NAO cortes o numero (mantem 24). "
-                "Verifica: (1) cada uma das 8 tecnicas tem minimo 2 representantes; (2) nomes genericos, obvios ou colisao grave. "
-                "Para cada problema encontrado, substitui por alternativa melhor com mesma tecnica_naming e mesmo schema completo. "
+                bloco_diretrizes
+                + "Recebeste 24 propostas de nome e as colisoes com marcas globais ja identificadas. "
+                "Tua missao: garantir qualidade, variedade util e obediencia a direcao do analista — NAO cortes o numero (mantem 24). "
+                "As tecnicas de naming sao repertorio, nao grade obrigatoria: nao force minimo por tecnica. "
+                "Nomes simples ou descritivos nao devem ser removidos automaticamente; marque risco_genericidade quando houver. "
+                "ATENCAO: Se ha DIRETRIZES E FEEDBACK OBRIGATORIOS acima, PRIORIZA manter ou substituir por nomes que usam "
+                "as palavras/termos preferidos do analista. NAO substituas nomes que seguem as preferencias por genericos. "
+                "Verifica tambem: nomes que repetem claramente a ESTRUTURA rejeitada de nomes NEGATIVADOS devem ser substituidos. "
+                "Nao proiba automaticamente todo radical de negativado se o analista tambem gosta daquele termo. "
+                "Para cada problema grave encontrado, substitui por alternativa melhor com tecnica_naming adequada e mesmo schema completo. "
                 "Entrega APENAS JSON valido no mesmo formato de naming, com exatamente 24 propostas, top3 atualizado, "
                 "e campos: critica_resumo (str), nomes_substituidos [{nome, motivo, substituto}], ajustes_feitos (str), "
-                "diversidade_tecnicas {tecnica: contagem}.\n"
+                "diversidade_tecnicas {tecnica: contagem}, riscos_mantidos [{nome, risco, motivo}].\n"
+                "O top3 deve ser uma lista de 3 OBJETOS (nao strings) com: nome, justificativa, base_estrategica, defesa_para_apresentacao.\n"
                 f"\nBRIEFING:\n{briefing_out[:1800]}"
                 f"\nBENCHMARK:\n{benchmark_out[:2200]}"
                 f"\nESTRATEGIA SEMANTICA:\n{semantica_out[:3500]}"
                 f"\nCOLISOES COM MARCAS GLOBAIS:\n{colisoes_out[:1500]}"
                 f"\nNOMES GERADOS (24 propostas):\n{naming_out[:24000]}"
-                "\nCriterios de substituicao: genericidade, baixa sonoridade, colisao confirmada, tecnica sub-representada, distancia do briefing."
+                "\nCriterios de substituicao: genericidade, baixa sonoridade, colisao confirmada, tecnica sub-representada, distancia do briefing, variacao de negativado."
             ),
-            expected_output="JSON revisado com exatamente 24 propostas, tecnicas diversificadas e top3 atualizado.",
+            expected_output="JSON revisado com exatamente 24 propostas, tecnicas diversificadas e top3 como lista de objetos.",
             agent=agente_critico,
         )
         result = _run_with_retry(Crew(agents=[agente_critico], tasks=[task], process=Process.sequential, verbose=True))
@@ -632,7 +659,7 @@ def rodar_crew(
                 '  "top3_aprofundado": [{"nome": "...", "classes_ncl_provaveis": [], "dominios": [], "handles_redes": [], "recomendacao": ""}],\n'
                 '  "aviso": "Triagem preliminar; não substitui busca profissional no INPI nem parecer jurídico."\n'
                 "}\n"
-                f"\nNOMES GERADOS:\n{naming_out[:5000]}"
+                f"\nNOMES GERADOS:\n{naming_out[:12000]}"
             ),
             expected_output="JSON de validação/roteiro (INPI, domínios, redes, Google, NCL).",
             agent=agente_validacao,
@@ -675,7 +702,7 @@ def rodar_crew(
                 "Referencia bases dos nomes de topo e destaca melhores scores foneticos. Tom profissional, em portugues.\n"
                 f"\n### BRIEFING:\n{briefing_out[:2000]}"
                 f"\n### BENCHMARK:\n{benchmark_out[:1500]}"
-                f"\n### NAMING (24 propostas + top3):\n{naming_out[:4000]}"
+                f"\n### NAMING (24 propostas + top3):\n{naming_out[:8000]}"
                 f"\n### VALIDAÇÃO:\n{validacao_out[:1500]}"
                 f"\n### FONÉTICA:\n{fonetica_out[:1500]}"
                 f"\n### RANKING FINAL:\n{ranking_out[:2000]}"
@@ -702,7 +729,7 @@ def rodar_crew(
                 "{\n"
                 '  "pesos": {"aderencia_briefing": 20, "originalidade": 15, "memorabilidade": 15, "sonoridade": 15, "diferenciacao_competitiva": 15, "registrabilidade_preliminar": 10, "potencial_premium": 10},\n'
                 '  "todos_nomes": [{"nome": "...", "score_final": 0, "tecnica_naming": "...", "motivo": "...", "principal_risco": "..."}],\n'
-                '  "top3": [{"nome": "...", "posicao": 1, "motivo": "...", "base_estrategica": "...", "defesa_para_apresentacao": "...", "principal_risco": "..."}],\n'
+                '  "top3": [{"nome": "...", "posicao": 1, "justificativa": "por que este nome ganhou", "base_estrategica": "como sustenta estrategia + territorios", "defesa_para_apresentacao": "como defender para o cliente", "principal_risco": "..."}],\n'
                 '  "recomendacao_final": "..."\n'
                 "}\n"
                 f"\nBRIEFING:\n{briefing_out[:1800]}"
