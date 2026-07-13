@@ -2,6 +2,7 @@
 
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, FormEvent } from "react";
 
@@ -127,6 +128,12 @@ export function LoginForm() {
           >
             {carregando ? "A entrar…" : "Entrar"}
           </button>
+          <Link
+            href="/forgot-password"
+            className="block text-center text-sm text-ili-cinza-500 hover:text-ili-preto"
+          >
+            Esqueci a senha
+          </Link>
         </form>
       </div>
     </div>
